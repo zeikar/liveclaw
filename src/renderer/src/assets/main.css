@@ -62,7 +62,8 @@ body {
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(280px, 38%) 1fr;
+  grid-template-columns: minmax(360px, 44%) minmax(0, 1fr);
+  overflow: hidden;
 }
 
 .live2d-panel {
@@ -114,6 +115,7 @@ body {
   flex: 1;
   min-height: 0;
   position: relative;
+  overflow: hidden;
 }
 
 .live2d-canvas {
@@ -271,7 +273,7 @@ body {
   cursor: not-allowed;
 }
 
-@media (max-width: 980px) {
+@media (max-width: 760px) {
   .app-content {
     grid-template-columns: 1fr;
     grid-template-rows: minmax(240px, 36%) 1fr;
