@@ -3,6 +3,8 @@ import { ElectronAPI } from '@electron-toolkit/preload'
 declare global {
   interface Window {
     electron: ElectronAPI
-    api: unknown
+    api: {
+      chat: (messages: Array<{ role: string; content: string }>) => Promise<string>
+    }
   }
 }

@@ -2,6 +2,13 @@ import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
+import { createOpenClawLLMProvider } from '@charivo/llm-provider-openclaw'
+
+// OpenClaw is called from the main process (Node.js) to avoid CORS restrictions in the renderer
+const llmProvider = createOpenClawLLMProvider({
+  token: 'YOUR_OPENCLAW_TOKEN',
+  baseURL: 'http://127.0.0.1:18789/v1'
+})
 
 function createWindow(): void {
   // Create the browser window.
@@ -51,6 +58,14 @@ app.whenReady().then(() => {
 
   // IPC test
   ipcMain.on('ping', () => console.log('pong'))
+
+  // IPC handler: renderer sends messages, main process calls OpenClaw (no CORS in Node.js)
+  ipcMain.handle(
+    'llm:chat',
+    async (_, messages: Array<{ role: string; content: string }>) => {
+      return await llmProvider.generateResponse(messages)
+    }
+  )
 
   createWindow()
 

@@ -1,8 +1,11 @@
-import { contextBridge } from 'electron'
+import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
 
-// Custom APIs for renderer
-const api = {}
+// Expose custom APIs to the renderer via contextBridge
+const api = {
+  chat: (messages: Array<{ role: string; content: string }>) =>
+    ipcRenderer.invoke('llm:chat', messages)
+}
 
 // Use `contextBridge` APIs to expose Electron APIs to
 // renderer only if context isolation is enabled, otherwise
