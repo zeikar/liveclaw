@@ -24,6 +24,8 @@
     "@charivo/core": "^0.0.1",
     "@charivo/llm-client-openclaw": "^0.0.1",
     "@charivo/llm-core": "^0.0.1",
+    "@charivo/render-core": "^0.0.1",
+    "@charivo/render-live2d": "^0.1.0",
     "@electron-toolkit/preload": "^3.0.2",
     "@electron-toolkit/utils": "^4.0.0",
     "electron-updater": "^6.3.9"

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { Live2DPanel } from './components/Live2DPanel'
 import { useCharivo } from './hooks/useCharivo'
 
 function App(): React.JSX.Element {
@@ -33,40 +34,46 @@ function App(): React.JSX.Element {
         </button>
       </header>
 
-      <main className="messages">
-        {messages.length === 0 && (
-          <div className="empty-state">Say something to get started!</div>
-        )}
-        {messages.map((msg) => (
-          <div key={msg.id} className={`message message-${msg.type}`}>
-            <span className="message-role">{msg.type === 'user' ? 'You' : 'Assistant'}</span>
-            <p className="message-content">{msg.content}</p>
-          </div>
-        ))}
-        {isLoading && (
-          <div className="message message-character">
-            <span className="message-role">Assistant</span>
-            <p className="message-content typing">...</p>
-          </div>
-        )}
-        {error && <div className="error-banner">{error}</div>}
-        <div ref={messagesEndRef} />
-      </main>
+      <div className="app-content">
+        <Live2DPanel />
 
-      <footer className="input-area">
-        <input
-          className="input"
-          type="text"
-          placeholder="Type a message..."
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          disabled={isLoading}
-        />
-        <button className="send-btn" onClick={handleSend} disabled={isLoading || !input.trim()}>
-          Send
-        </button>
-      </footer>
+        <section className="chat-panel">
+          <main className="messages">
+            {messages.length === 0 && (
+              <div className="empty-state">Say something to get started!</div>
+            )}
+            {messages.map((msg) => (
+              <div key={msg.id} className={`message message-${msg.type}`}>
+                <span className="message-role">{msg.type === 'user' ? 'You' : 'Assistant'}</span>
+                <p className="message-content">{msg.content}</p>
+              </div>
+            ))}
+            {isLoading && (
+              <div className="message message-character">
+                <span className="message-role">Assistant</span>
+                <p className="message-content typing">...</p>
+              </div>
+            )}
+            {error && <div className="error-banner">{error}</div>}
+            <div ref={messagesEndRef} />
+          </main>
+
+          <footer className="input-area">
+            <input
+              className="input"
+              type="text"
+              placeholder="Type a message..."
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              disabled={isLoading}
+            />
+            <button className="send-btn" onClick={handleSend} disabled={isLoading || !input.trim()}>
+              Send
+            </button>
+          </footer>
+        </section>
+      </div>
     </div>
   )
 }

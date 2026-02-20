@@ -13,7 +13,6 @@ body {
   flex-direction: column;
 }
 
-/* App layout */
 .app {
   display: flex;
   flex-direction: column;
@@ -21,7 +20,6 @@ body {
   width: 100%;
 }
 
-/* Header */
 .header {
   display: flex;
   align-items: center;
@@ -60,7 +58,85 @@ body {
   cursor: not-allowed;
 }
 
-/* Messages area */
+.app-content {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(280px, 38%) 1fr;
+}
+
+.live2d-panel {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--color-border);
+  background:
+    radial-gradient(circle at 20% 0%, #243045 0%, transparent 45%),
+    radial-gradient(circle at 90% 100%, #1f3340 0%, transparent 35%),
+    #121519;
+}
+
+.live2d-panel-header {
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 14px;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 75%, transparent);
+  background-color: color-mix(in srgb, var(--color-background-soft) 70%, transparent);
+}
+
+.live2d-panel-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ev-c-text-1);
+}
+
+.live2d-status {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.live2d-status.is-loading {
+  background-color: rgba(255, 193, 7, 0.2);
+  color: #facc15;
+}
+
+.live2d-status.is-ready {
+  background-color: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+}
+
+.live2d-stage {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}
+
+.live2d-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.live2d-error {
+  padding: 10px 14px;
+  border-top: 1px solid var(--color-border);
+  background-color: rgba(254, 226, 226, 0.1);
+  color: #f87171;
+  font-size: 12px;
+}
+
+.chat-panel {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
 .messages {
   flex: 1;
   overflow-y: auto;
@@ -68,6 +144,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  min-height: 0;
 }
 
 .empty-state {
@@ -79,7 +156,6 @@ body {
   font-size: 14px;
 }
 
-/* Message bubbles */
 .message {
   display: flex;
   flex-direction: column;
@@ -92,7 +168,8 @@ body {
   align-items: flex-end;
 }
 
-.message-character {
+.message-character,
+.message-system {
   align-self: flex-start;
   align-items: flex-start;
 }
@@ -119,7 +196,8 @@ body {
   border-bottom-right-radius: 4px;
 }
 
-.message-character .message-content {
+.message-character .message-content,
+.message-system .message-content {
   background-color: var(--color-background-mute);
   color: var(--ev-c-text-1);
   border-bottom-left-radius: 4px;
@@ -130,7 +208,6 @@ body {
   letter-spacing: 2px;
 }
 
-/* Error banner */
 .error-banner {
   align-self: center;
   padding: 8px 14px;
@@ -141,7 +218,6 @@ body {
   text-align: center;
 }
 
-/* Input area */
 .input-area {
   display: flex;
   align-items: center;
@@ -193,4 +269,16 @@ body {
 .send-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+@media (max-width: 980px) {
+  .app-content {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(240px, 36%) 1fr;
+  }
+
+  .live2d-panel {
+    border-right: 0;
+    border-bottom: 1px solid var(--color-border);
+  }
 }
