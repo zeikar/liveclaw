@@ -1,6 +1,8 @@
 # LiveClaw
 
-An OpenClaw desktop assistant with Live2D avatars, integrating speech recognition (STT) and speech synthesis (TTS).
+OpenClaw-powered desktop AI companion with Live2D avatars, voice input, and speech synthesis.
+
+> 🚧 **Work in progress** — actively under development. Contributions and feedback welcome!
 
 Built with **Electron + React + TypeScript** and the [Charivo](https://github.com/zeikar/charivo) framework.
 
@@ -10,7 +12,7 @@ Built with **Electron + React + TypeScript** and the [Charivo](https://github.co
 - **React + TypeScript** - Renderer UI
 - **electron-vite** - Build tooling
 - **Charivo** (`@charivo/core`, `@charivo/llm-core`) - LLM session & character management
-- **OpenClaw** - Local AI agent backend (OpenAI-compatible API)
+- **[OpenClaw](https://openclaw.ai/)** - Self-hosted personal AI agent that runs locally on your machine
 
 ## Architecture
 
@@ -33,7 +35,7 @@ Direct `fetch` from the renderer (Chromium) is blocked by CORS and Private Netwo
 
 ## Prerequisites
 
-- [OpenClaw](https://openclaw.ai) installed and running (default port: `18789`)
+- [OpenClaw](https://openclaw.ai/) installed and running (default port: `18789`)
 
 ## Configuration
 
@@ -63,6 +65,7 @@ charivo.setCharacter({
 - [ ] Live2D avatar rendering (`@charivo/render-live2d`)
 - [ ] Text-to-speech (`@charivo/tts-core`)
 - [ ] Speech-to-text (`@charivo/stt-core`)
+- [ ] WebSocket support for real-time streaming responses
 
 ## Recommended IDE Setup
 
