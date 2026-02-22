@@ -30,9 +30,11 @@ export function useLive2DRenderer(): UseLive2DRendererResult {
       setIsRendererReady(false)
 
       const canvas = document.createElement('canvas')
-      canvas.className = 'live2d-canvas'
       canvas.width = 720
       canvas.height = 720
+      canvas.style.width = '100%'
+      canvas.style.height = '100%'
+      canvas.style.display = 'block'
       stage.replaceChildren(canvas)
 
       const [{ Live2DRenderer }, { createRenderManager }] = await Promise.all([

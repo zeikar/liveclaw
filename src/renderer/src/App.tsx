@@ -1,5 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { Live2DPanel } from './components/Live2DPanel'
+import { ChatComposer } from './components/chat/ChatComposer'
+import { ChatHeader } from './components/chat/ChatHeader'
+import { MessageList } from './components/chat/MessageList'
+import { APP_CHARACTER } from './config/character'
 import { useCharivo } from './hooks/useCharivo'
 
 function App(): React.JSX.Element {
@@ -9,7 +13,7 @@ function App(): React.JSX.Element {
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
+  }, [messages, isLoading])
 
   const handleSend = async (): Promise<void> => {
     const text = input.trim()
@@ -26,54 +30,35 @@ function App(): React.JSX.Element {
   }
 
   return (
-    <div className="app">
-      <header className="header">
-        <span className="header-title">LiveClaw</span>
-        <button className="clear-btn" onClick={clearHistory} disabled={isBusy}>
-          Clear
-        </button>
-      </header>
+    <div className="relative flex h-screen w-screen flex-col overflow-hidden bg-slate-950 text-slate-100">
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute -left-20 top-0 h-80 w-80 rounded-full bg-blue-500/20 blur-3xl" />
+        <div className="absolute -right-16 bottom-0 h-72 w-72 rounded-full bg-cyan-500/20 blur-3xl" />
+      </div>
 
-      <div className="app-content">
+      <ChatHeader characterName={APP_CHARACTER.name} isBusy={isBusy} onClear={clearHistory} />
+
+      <main className="relative z-10 min-h-0 flex-1 overflow-hidden">
         <Live2DPanel />
 
-        <section className="chat-panel">
-          <main className="messages">
-            {messages.length === 0 && (
-              <div className="empty-state">Say something to get started!</div>
-            )}
-            {messages.map((msg) => (
-              <div key={msg.id} className={`message message-${msg.type}`}>
-                <span className="message-role">{msg.type === 'user' ? 'You' : 'Assistant'}</span>
-                <p className="message-content">{msg.content}</p>
-              </div>
-            ))}
-            {isLoading && (
-              <div className="message message-character">
-                <span className="message-role">Assistant</span>
-                <p className="message-content typing">...</p>
-              </div>
-            )}
-            {error && <div className="error-banner">{error}</div>}
-            <div ref={messagesEndRef} />
-          </main>
+        <MessageList
+          messages={messages}
+          characterName={APP_CHARACTER.name}
+          isLoading={isLoading}
+          error={error}
+          messagesEndRef={messagesEndRef}
+        />
 
-          <footer className="input-area">
-            <input
-              className="input"
-              type="text"
-              placeholder="Type a message..."
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              disabled={isLoading}
-            />
-            <button className="send-btn" onClick={handleSend} disabled={isBusy || !input.trim()}>
-              Send
-            </button>
-          </footer>
-        </section>
-      </div>
+        <ChatComposer
+          characterName={APP_CHARACTER.name}
+          input={input}
+          isLoading={isLoading}
+          isBusy={isBusy}
+          onInputChange={setInput}
+          onSend={handleSend}
+          onKeyDown={handleKeyDown}
+        />
+      </main>
     </div>
   )
 }

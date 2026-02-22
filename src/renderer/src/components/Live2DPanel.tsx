@@ -1,22 +1,37 @@
+import { APP_CHARACTER } from '../config/character'
 import { useLive2DRenderer } from '../hooks/useLive2DRenderer'
 
 export function Live2DPanel(): React.JSX.Element {
   const { stageRef, isRendererReady, rendererError } = useLive2DRenderer()
 
   return (
-    <section className="live2d-panel">
-      <div className="live2d-panel-header">
-        <span className="live2d-panel-title">Hiyori</span>
+    <section className="absolute inset-0">
+      <div className="pointer-events-none absolute inset-0 bg-slate-950/40" />
+      <div className="pointer-events-none absolute left-16 top-10 h-72 w-72 rounded-full bg-indigo-500/15 blur-3xl" />
+      <div className="pointer-events-none absolute right-10 bottom-8 h-64 w-64 rounded-full bg-cyan-500/15 blur-3xl" />
+
+      <div className="absolute left-4 top-4 z-10 flex items-center gap-2 rounded-full border border-white/10 bg-slate-900/70 px-3 py-1.5 backdrop-blur">
+        <span className="text-xs font-bold text-slate-100">{APP_CHARACTER.name}</span>
         {!rendererError && (
-          <span className={`live2d-status ${isRendererReady ? 'is-ready' : 'is-loading'}`}>
+          <span
+            className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+              isRendererReady
+                ? 'bg-emerald-500/20 text-emerald-300'
+                : 'bg-amber-500/20 text-amber-300'
+            }`}
+          >
             {isRendererReady ? 'Ready' : 'Loading'}
           </span>
         )}
       </div>
 
-      <div className="live2d-stage" ref={stageRef} />
+      <div ref={stageRef} className="absolute inset-0" />
 
-      {rendererError && <p className="live2d-error">{rendererError}</p>}
+      {rendererError && (
+        <p className="absolute left-4 top-16 z-10 max-w-md rounded-lg border border-red-300/40 bg-red-900/70 px-3 py-2 text-xs text-red-100">
+          {rendererError}
+        </p>
+      )}
     </section>
   )
 }
