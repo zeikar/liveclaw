@@ -6,6 +6,10 @@ OpenClaw-powered desktop AI companion with Live2D avatars, voice input, and spee
 
 Built with **Electron + React + TypeScript** and the [Charivo](https://github.com/zeikar/charivo) framework.
 
+## Screenshot
+
+![LiveClaw UI](docs/images/liveclaw-ui.png)
+
 ## Tech Stack
 
 - **Electron** - Desktop app shell
