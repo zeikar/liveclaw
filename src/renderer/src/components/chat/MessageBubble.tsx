@@ -12,12 +12,8 @@ export function MessageBubble({
   autoFade = false
 }: MessageBubbleProps): React.JSX.Element {
   return (
-    <div
-      className={`flex w-full flex-col gap-1 ${
-        isUser ? 'items-end' : 'items-start'
-      } ${autoFade ? 'bubble-fade-out' : ''}`}
-    >
-      <div className="max-w-[95%]">
+    <div className={`flex w-full flex-col items-end gap-1 ${autoFade ? 'bubble-fade-out' : ''}`}>
+      <div className="max-w-full">
         <p
           className={`rounded-tl-2xl rounded-tr-2xl rounded-bl-2xl rounded-br-none px-4 py-3 text-sm shadow-lg ${
             isTyping ? 'tracking-wide' : 'leading-relaxed'

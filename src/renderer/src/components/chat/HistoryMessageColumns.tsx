@@ -71,8 +71,11 @@ export function HistoryMessageColumns({
   const userRef = useChatScroll(userMessages)
 
   return (
-    <div className="grid h-full grid-cols-2 items-start gap-x-4 py-1 sm:gap-x-8">
-      <div className="h-full overflow-y-auto pr-1" ref={charRef}>
+    <div className="flex h-full items-start gap-x-3 py-1 sm:gap-x-6 lg:gap-x-10">
+      <div
+        className="h-full min-w-0 flex-1 overflow-y-auto pr-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+        ref={charRef}
+      >
         <div className="flex min-h-full flex-col gap-3">
           {characterMessages.map((msg) => (
             <MessageBubble key={msg.id} content={msg.content} isUser={false} />
@@ -81,7 +84,9 @@ export function HistoryMessageColumns({
         </div>
       </div>
 
-      <div className="h-full overflow-y-auto pl-1" ref={userRef}>
+      <div className="w-10 shrink-0 sm:w-24 lg:w-36" aria-hidden="true" />
+
+      <div className="h-full min-w-0 flex-1 overflow-y-auto pl-1" ref={userRef}>
         <div className="flex min-h-full flex-col gap-3">
           {userMessages.map((msg) => (
             <MessageBubble key={msg.id} content={msg.content} isUser />
