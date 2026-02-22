@@ -69,14 +69,14 @@ Live2D is already integrated through Charivo renderer attachment.
 
 ### 1. OpenClaw chat provider
 
-OpenClaw token and connection settings are defined at the top of `src/main/index.ts`:
+Set OpenClaw connection values in `.env`:
 
-```ts
-const llmProvider = createOpenClawLLMProvider({
-  token: 'YOUR_OPENCLAW_TOKEN',
-  baseURL: 'http://127.0.0.1:18789/v1' // default
-})
+```bash
+OPENCLAW_TOKEN=your_openclaw_token
+OPENCLAW_BASE_URL=http://127.0.0.1:18789/v1
 ```
+
+`OPENCLAW_BASE_URL` defaults to `http://127.0.0.1:18789/v1`.
 
 ### 2. Direct OpenAI TTS
 

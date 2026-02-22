@@ -3,11 +3,22 @@ import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { createOpenClawLLMProvider } from '@charivo/llm-provider-openclaw'
+import 'dotenv/config'
+
+const DEFAULT_OPENCLAW_BASE_URL = 'http://127.0.0.1:18789/v1'
+const openClawToken = process.env.OPENCLAW_TOKEN?.trim() || ''
+const openClawBaseURL = process.env.OPENCLAW_BASE_URL?.trim() || DEFAULT_OPENCLAW_BASE_URL
+
+if (!openClawToken) {
+  console.warn(
+    '[OpenClaw] OPENCLAW_TOKEN is not set. If your OpenClaw instance requires auth, requests will fail.'
+  )
+}
 
 // OpenClaw is called from the main process (Node.js) to avoid CORS restrictions in the renderer
 const llmProvider = createOpenClawLLMProvider({
-  token: 'YOUR_OPENCLAW_TOKEN',
-  baseURL: 'http://127.0.0.1:18789/v1'
+  token: openClawToken,
+  baseURL: openClawBaseURL
 })
 
 function createWindow(): void {
