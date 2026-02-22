@@ -1,1 +1,11 @@
 @import 'tailwindcss';
+
+@keyframes bubble-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+.bubble-fade-out {
+  animation: bubble-fade-out 700ms ease 2600ms forwards;
+}

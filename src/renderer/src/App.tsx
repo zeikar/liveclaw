@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { Live2DPanel } from './components/Live2DPanel'
 import { ChatComposer } from './components/chat/ChatComposer'
 import { ChatHeader } from './components/chat/ChatHeader'
@@ -9,11 +9,6 @@ import { useCharivo } from './hooks/useCharivo'
 function App(): React.JSX.Element {
   const { messages, isLoading, isBusy, error, sendMessage, clearHistory } = useCharivo()
   const [input, setInput] = useState('')
-  const messagesEndRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages, isLoading])
 
   const handleSend = async (): Promise<void> => {
     const text = input.trim()
@@ -42,10 +37,10 @@ function App(): React.JSX.Element {
         <Live2DPanel />
 
         <MessageList
+          key={`messages:${messages.length}:loading:${isLoading ? 1 : 0}`}
           messages={messages}
           isLoading={isLoading}
           error={error}
-          messagesEndRef={messagesEndRef}
         />
 
         <ChatComposer
