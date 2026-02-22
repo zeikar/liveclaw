@@ -43,7 +43,6 @@ function App(): React.JSX.Element {
 
         <MessageList
           messages={messages}
-          characterName={APP_CHARACTER.name}
           isLoading={isLoading}
           error={error}
           messagesEndRef={messagesEndRef}
