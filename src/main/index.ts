@@ -60,12 +60,9 @@ app.whenReady().then(() => {
   ipcMain.on('ping', () => console.log('pong'))
 
   // IPC handler: renderer sends messages, main process calls OpenClaw (no CORS in Node.js)
-  ipcMain.handle(
-    'llm:chat',
-    async (_, messages: Array<{ role: string; content: string }>) => {
-      return await llmProvider.generateResponse(messages)
-    }
-  )
+  ipcMain.handle('llm:chat', async (_, messages: Array<{ role: string; content: string }>) => {
+    return await llmProvider.generateResponse(messages)
+  })
 
   createWindow()
 
