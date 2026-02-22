@@ -4,7 +4,8 @@ import { electronAPI } from '@electron-toolkit/preload'
 // Expose custom APIs to the renderer via contextBridge
 const api = {
   chat: (messages: Array<{ role: string; content: string }>) =>
-    ipcRenderer.invoke('llm:chat', messages)
+    ipcRenderer.invoke('llm:chat', messages),
+  openExternal: (url: string) => ipcRenderer.invoke('app:openExternal', url)
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

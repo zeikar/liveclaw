@@ -75,6 +75,24 @@ app.whenReady().then(() => {
     return await llmProvider.generateResponse(messages)
   })
 
+  ipcMain.handle('app:openExternal', async (_, rawUrl: string) => {
+    const url = rawUrl?.trim()
+    if (!url) return
+
+    let parsed: URL
+    try {
+      parsed = new URL(url)
+    } catch {
+      return
+    }
+
+    if (!['http:', 'https:', 'mailto:'].includes(parsed.protocol)) {
+      return
+    }
+
+    await shell.openExternal(parsed.toString())
+  })
+
   createWindow()
 
   app.on('activate', function () {
