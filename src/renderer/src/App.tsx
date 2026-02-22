@@ -1,13 +1,12 @@
 import { useState } from 'react'
 import { Live2DPanel } from './components/Live2DPanel'
 import { ChatComposer } from './components/chat/ChatComposer'
-import { ChatHeader } from './components/chat/ChatHeader'
 import { MessageList } from './components/chat/MessageList'
 import { APP_CHARACTER } from './config/character'
 import { useCharivo } from './hooks/useCharivo'
 
 function App(): React.JSX.Element {
-  const { messages, isLoading, isBusy, error, sendMessage, clearHistory } = useCharivo()
+  const { messages, isLoading, isBusy, error, sendMessage } = useCharivo()
   const [input, setInput] = useState('')
 
   const handleSend = async (): Promise<void> => {
@@ -30,8 +29,6 @@ function App(): React.JSX.Element {
         <div className="absolute -left-20 top-0 h-80 w-80 rounded-full bg-blue-500/20 blur-3xl" />
         <div className="absolute -right-16 bottom-0 h-72 w-72 rounded-full bg-cyan-500/20 blur-3xl" />
       </div>
-
-      <ChatHeader characterName={APP_CHARACTER.name} isBusy={isBusy} onClear={clearHistory} />
 
       <main className="relative z-10 min-h-0 flex-1 overflow-hidden">
         <Live2DPanel />

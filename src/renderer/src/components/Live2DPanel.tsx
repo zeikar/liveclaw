@@ -2,7 +2,7 @@ import { APP_CHARACTER } from '../config/character'
 import { useLive2DRenderer } from '../hooks/useLive2DRenderer'
 
 export function Live2DPanel(): React.JSX.Element {
-  const { stageRef, isRendererReady, rendererError } = useLive2DRenderer()
+  const { stageRef, rendererError } = useLive2DRenderer()
 
   return (
     <section className="absolute inset-0">
@@ -12,17 +12,6 @@ export function Live2DPanel(): React.JSX.Element {
 
       <div className="absolute left-4 top-4 z-10 flex items-center gap-2 rounded-full border border-white/10 bg-slate-900/70 px-3 py-1.5 backdrop-blur">
         <span className="text-xs font-bold text-slate-100">{APP_CHARACTER.name}</span>
-        {!rendererError && (
-          <span
-            className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
-              isRendererReady
-                ? 'bg-emerald-500/20 text-emerald-300'
-                : 'bg-amber-500/20 text-amber-300'
-            }`}
-          >
-            {isRendererReady ? 'Ready' : 'Loading'}
-          </span>
-        )}
       </div>
 
       <div ref={stageRef} className="absolute inset-0" />
