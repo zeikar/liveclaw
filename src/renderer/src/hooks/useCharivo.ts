@@ -10,6 +10,7 @@ import {
 type UseCharivoResult = {
   messages: Message[]
   isLoading: boolean
+  isBusy: boolean
   error: string | null
   sendMessage: (text: string) => Promise<void>
   clearHistory: () => void
@@ -18,15 +19,29 @@ type UseCharivoResult = {
 export function useCharivo(): UseCharivoResult {
   const [messages, setMessages] = useState<Message[]>(() => getMessagesSnapshot())
   const [isLoading, setIsLoading] = useState(false)
+  const [isBusy, setIsBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const charivo = getCharivoInstance()
 
-  useEffect(() => subscribeMessages(setMessages), [])
+  useEffect(
+    () =>
+      subscribeMessages((nextMessages) => {
+        setMessages(nextMessages)
+
+        const lastMessage = nextMessages[nextMessages.length - 1]
+        if (lastMessage?.type === 'character') {
+          // Hide typing indicator as soon as text response is ready, even if TTS is still playing.
+          setIsLoading(false)
+        }
+      }),
+    []
+  )
 
   const sendMessage = useCallback(
     async (text: string) => {
-      if (!text.trim() || isLoading) return
+      if (!text.trim() || isBusy) return
       setError(null)
+      setIsBusy(true)
       setIsLoading(true)
       try {
         await charivo.userSay(text)
@@ -50,10 +65,11 @@ export function useCharivo(): UseCharivoResult {
           setError(`Error: ${message}`)
         }
       } finally {
+        setIsBusy(false)
         setIsLoading(false)
       }
     },
-    [charivo, isLoading]
+    [charivo, isBusy]
   )
 
   const clearHistory = useCallback(() => {
@@ -62,5 +78,5 @@ export function useCharivo(): UseCharivoResult {
     setError(null)
   }, [charivo])
 
-  return { messages, isLoading, error, sendMessage, clearHistory }
+  return { messages, isLoading, isBusy, error, sendMessage, clearHistory }
 }

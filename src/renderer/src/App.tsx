@@ -3,7 +3,7 @@ import { Live2DPanel } from './components/Live2DPanel'
 import { useCharivo } from './hooks/useCharivo'
 
 function App(): React.JSX.Element {
-  const { messages, isLoading, error, sendMessage, clearHistory } = useCharivo()
+  const { messages, isLoading, isBusy, error, sendMessage, clearHistory } = useCharivo()
   const [input, setInput] = useState('')
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
@@ -29,7 +29,7 @@ function App(): React.JSX.Element {
     <div className="app">
       <header className="header">
         <span className="header-title">LiveClaw</span>
-        <button className="clear-btn" onClick={clearHistory} disabled={isLoading}>
+        <button className="clear-btn" onClick={clearHistory} disabled={isBusy}>
           Clear
         </button>
       </header>
@@ -66,9 +66,9 @@ function App(): React.JSX.Element {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              disabled={isLoading}
+              disabled={isBusy}
             />
-            <button className="send-btn" onClick={handleSend} disabled={isLoading || !input.trim()}>
+            <button className="send-btn" onClick={handleSend} disabled={isBusy || !input.trim()}>
               Send
             </button>
           </footer>
