@@ -66,7 +66,7 @@ function App(): React.JSX.Element {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              disabled={isBusy}
+              disabled={isLoading}
             />
             <button className="send-btn" onClick={handleSend} disabled={isBusy || !input.trim()}>
               Send
