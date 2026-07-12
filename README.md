@@ -1,5 +1,7 @@
 # LiveClaw
 
+[![CI](https://github.com/zeikar/liveclaw/actions/workflows/ci.yml/badge.svg)](https://github.com/zeikar/liveclaw/actions/workflows/ci.yml)
+
 OpenClaw-powered desktop AI companion with Live2D avatars, voice input, and speech synthesis.
 
 > **Work in progress** - actively under development. Contributions and feedback are welcome.
