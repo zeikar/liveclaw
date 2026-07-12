@@ -33,7 +33,7 @@ jobs:
 
       - run: npx electron-builder ${{ matrix.args }} --publish never
 
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.os }}-packages
           path: |
@@ -50,7 +50,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v8
         with:
           merge-multiple: true
           path: dist
