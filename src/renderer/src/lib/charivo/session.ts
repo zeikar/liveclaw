@@ -1,7 +1,7 @@
 import { Charivo, type LLMClient, type Message } from '@charivo/core'
-import { createLLMManager } from '@charivo/llm-core'
-import { createTTSManager } from '@charivo/tts-core'
-import { createOpenAITTSPlayer, type OpenAITTSPlayerConfig } from '@charivo/tts-player-openai'
+import { createLLMManager } from '@charivo/llm'
+import { createTTSManager } from '@charivo/tts'
+import { createOpenAITTSPlayer, type OpenAITTSPlayerConfig } from '@charivo/tts/openai'
 import { APP_CHARACTER } from '../../config/character'
 
 const OPENAI_TTS_MODELS = ['tts-1', 'tts-1-hd', 'gpt-4o-mini-tts'] as const
@@ -37,7 +37,9 @@ const attachDirectOpenAITTS = (): void => {
   const ttsPlayer = createOpenAITTSPlayer({
     apiKey,
     defaultModel: toModel(import.meta.env.VITE_OPENAI_TTS_MODEL),
-    defaultVoice: toVoice(import.meta.env.VITE_OPENAI_TTS_VOICE)
+    defaultVoice: toVoice(import.meta.env.VITE_OPENAI_TTS_VOICE),
+    // The Electron renderer is a browser context; the key stays local to this desktop app.
+    dangerouslyAllowBrowser: true
   })
   const ttsManager = createTTSManager(ttsPlayer)
   charivo.attachTTS(ttsManager)

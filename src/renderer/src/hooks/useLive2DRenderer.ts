@@ -1,11 +1,11 @@
 import { type RefObject, useEffect, useRef, useState } from 'react'
-import type { RenderManager } from '@charivo/render-core'
+import type { RenderManager } from '@charivo/core'
 import { APP_CHARACTER } from '../config/character'
 import { LIVE2D_MODEL_PATH } from '../config/live2d'
 import { getCharivoInstance } from '../lib/charivo/session'
 
 type Live2DRendererModule = typeof import('@charivo/render-live2d')
-type RenderCoreModule = typeof import('@charivo/render-core')
+type RenderModule = typeof import('@charivo/render')
 
 type UseLive2DRendererResult = {
   stageRef: RefObject<HTMLDivElement | null>
@@ -37,14 +37,14 @@ export function useLive2DRenderer(): UseLive2DRendererResult {
       canvas.style.display = 'block'
       stage.replaceChildren(canvas)
 
-      const [{ Live2DRenderer }, { createRenderManager }] = await Promise.all([
+      const [{ createLive2DRenderer }, { createRenderManager }] = await Promise.all([
         import('@charivo/render-live2d') as Promise<Live2DRendererModule>,
-        import('@charivo/render-core') as Promise<RenderCoreModule>
+        import('@charivo/render') as Promise<RenderModule>
       ])
 
       if (disposed) return
 
-      const renderer = new Live2DRenderer({ canvas })
+      const renderer = createLive2DRenderer({ canvas })
       const manager = createRenderManager(renderer, {
         canvas,
         mouseTracking: 'document'

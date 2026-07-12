@@ -2,7 +2,7 @@ import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
-import { createOpenClawLLMProvider } from '@charivo/llm-provider-openclaw'
+import { createOpenClawLLMProvider } from '@charivo/server/openclaw'
 import 'dotenv/config'
 
 const DEFAULT_OPENCLAW_BASE_URL = 'http://127.0.0.1:18789/v1'
