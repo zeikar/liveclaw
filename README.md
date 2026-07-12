@@ -17,10 +17,10 @@ Built with **Electron + React + TypeScript** and the [Charivo](https://github.co
 - **Electron** - Desktop app shell
 - **React + TypeScript** - Renderer UI
 - **electron-vite** - Build tooling
-- **Live2D** (`@charivo/render-live2d`, `@charivo/render-core`) - Character model rendering and motion playback
-- **Charivo** (`@charivo/core`, `@charivo/llm-core`, `@charivo/tts-core`) - Character session orchestration (LLM/TTS/Renderer)
-- **[OpenClaw](https://openclaw.ai/)** (`@charivo/llm-provider-openclaw`) - Local LLM backend for chat
-- **OpenAI TTS** (`@charivo/tts-player-openai`) - Direct renderer-side speech synthesis for local use
+- **Live2D** (`@charivo/render-live2d`, `@charivo/render`) - Character model rendering and motion playback
+- **Charivo** (`@charivo/core`, `@charivo/llm`, `@charivo/tts`) - Character session orchestration (LLM/TTS/Renderer)
+- **[OpenClaw](https://openclaw.ai/)** (`@charivo/server/openclaw`) - Local LLM backend for chat
+- **OpenAI TTS** (`@charivo/tts/openai`) - Direct renderer-side speech synthesis for local use
 
 ## Architecture
 
@@ -36,7 +36,7 @@ Built with **Electron + React + TypeScript** and the [Charivo](https://github.co
        | IPC (window.api.chat)
        v
 [Main Process - Node.js]
-  @charivo/llm-provider-openclaw
+  @charivo/server/openclaw
        |
        | HTTP (OpenAI-compatible)
        v
@@ -45,7 +45,7 @@ Built with **Electron + React + TypeScript** and the [Charivo](https://github.co
 
 ```txt
 [Renderer - React]
-  @charivo/tts-player-openai
+  @charivo/tts/openai
        |
        | HTTPS
        v
@@ -114,8 +114,8 @@ Use this setup only for trusted local/dev environments.
 - [x] OpenClaw LLM integration via IPC
 - [x] Chat UI (message history, error handling)
 - [x] Live2D rendering integration (`@charivo/render-live2d`)
-- [x] Direct OpenAI TTS integration (`@charivo/tts-player-openai`)
-- [ ] Speech-to-text (`@charivo/stt-core`)
+- [x] Direct OpenAI TTS integration (`@charivo/tts/openai`)
+- [ ] Speech-to-text (`@charivo/stt`)
 - [ ] WebSocket support for real-time streaming responses
 
 ## Recommended IDE Setup
@@ -140,6 +140,12 @@ $ npm run dev
 
 ```bash
 $ npm run typecheck
+```
+
+### Test
+
+```bash
+$ npm test
 ```
 
 ### Build
