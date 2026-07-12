@@ -1,5 +1,5 @@
 import type { Message } from '@charivo/core'
-import { useLayoutEffect, useRef } from 'react'
+import { type RefObject, useLayoutEffect, useRef } from 'react'
 import { MessageBubble } from './MessageBubble'
 
 type HistoryMessageColumnsProps = {
@@ -8,7 +8,7 @@ type HistoryMessageColumnsProps = {
   isLoading?: boolean
 }
 
-function useChatScroll(messages: Message[], isLoading?: boolean) {
+function useChatScroll(messages: Message[], isLoading?: boolean): RefObject<HTMLDivElement | null> {
   const containerRef = useRef<HTMLDivElement>(null)
   const isInitialMount = useRef(true)
   const prevMsgCount = useRef(messages.length)
@@ -21,7 +21,7 @@ function useChatScroll(messages: Message[], isLoading?: boolean) {
     const listContainer = container.firstElementChild as HTMLElement
     if (!listContainer) return
 
-    const updateLayout = () => {
+    const updateLayout = (): void => {
       const lastChild = listContainer.lastElementChild as HTMLElement
       if (lastChild) {
         const newPadding = Math.max(0, container.clientHeight - lastChild.offsetHeight)
@@ -33,8 +33,9 @@ function useChatScroll(messages: Message[], isLoading?: boolean) {
     updateLayout()
 
     // 2. Handle scroll
-    const isNewMessage = messages.length !== prevMsgCount.current || isLoading !== prevIsLoading.current
-    
+    const isNewMessage =
+      messages.length !== prevMsgCount.current || isLoading !== prevIsLoading.current
+
     if (isInitialMount.current) {
       container.scrollTop = container.scrollHeight
       isInitialMount.current = false
