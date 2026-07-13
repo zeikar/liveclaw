@@ -1,12 +1,23 @@
 # LiveClaw
 
 [![CI](https://github.com/zeikar/liveclaw/actions/workflows/ci.yml/badge.svg)](https://github.com/zeikar/liveclaw/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/zeikar/liveclaw)](https://github.com/zeikar/liveclaw/releases/latest)
 
 OpenClaw-powered desktop AI companion with Live2D avatars, voice input, and speech synthesis.
 
 > **Work in progress** - actively under development. Contributions and feedback are welcome.
 
 Built with **Electron + React + TypeScript** and the [Charivo](https://github.com/zeikar/charivo) framework.
+
+## Download
+
+Prebuilt installers for each release are on the [latest release page](https://github.com/zeikar/liveclaw/releases/latest):
+
+- **macOS** (Apple Silicon) - `.dmg`
+- **Windows** - `-setup.exe`
+- **Linux** - `.AppImage`, `.deb`
+
+> macOS builds are not code-signed yet, so Gatekeeper may warn on first launch.
 
 ## Screenshot
 
