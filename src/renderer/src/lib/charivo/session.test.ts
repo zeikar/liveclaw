@@ -9,7 +9,15 @@ import {
 const chatMock = vi.fn<Window['api']['chat']>()
 
 beforeEach(() => {
-  window.api = { chat: chatMock, newConversation: vi.fn(), openExternal: vi.fn() }
+  window.api = {
+    chat: chatMock,
+    newConversation: vi.fn(),
+    openExternal: vi.fn(),
+    getSettings: vi.fn(),
+    saveSettings: vi.fn(),
+    testConnection: vi.fn(),
+    getTTSConfig: vi.fn()
+  }
   chatMock.mockReset()
   getCharivoInstance().clearHistory()
   resetMessages()

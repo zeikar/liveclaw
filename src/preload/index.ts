@@ -6,7 +6,13 @@ const api = {
   chat: (messages: Array<{ role: string; content: string }>) =>
     ipcRenderer.invoke('llm:chat', messages),
   newConversation: () => ipcRenderer.invoke('llm:newConversation'),
-  openExternal: (url: string) => ipcRenderer.invoke('app:openExternal', url)
+  openExternal: (url: string) => ipcRenderer.invoke('app:openExternal', url),
+  getSettings: () => ipcRenderer.invoke('settings:get'),
+  saveSettings: (input: SettingsInput) => ipcRenderer.invoke('settings:save', input),
+  // An empty token means "use the implicit one, if it is bound to this origin".
+  testConnection: (token: string, baseURL: string) =>
+    ipcRenderer.invoke('settings:test', { token, baseURL }),
+  getTTSConfig: () => ipcRenderer.invoke('tts:getConfig')
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

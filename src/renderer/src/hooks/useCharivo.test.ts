@@ -7,7 +7,15 @@ const chatMock = vi.fn<Window['api']['chat']>()
 const newConversationMock = vi.fn<Window['api']['newConversation']>()
 
 beforeEach(() => {
-  window.api = { chat: chatMock, newConversation: newConversationMock, openExternal: vi.fn() }
+  window.api = {
+    chat: chatMock,
+    newConversation: newConversationMock,
+    openExternal: vi.fn(),
+    getSettings: vi.fn(),
+    saveSettings: vi.fn(),
+    testConnection: vi.fn(),
+    getTTSConfig: vi.fn()
+  }
   chatMock.mockReset()
   newConversationMock.mockReset()
   newConversationMock.mockResolvedValue(undefined)
