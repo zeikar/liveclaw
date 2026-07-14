@@ -32,6 +32,7 @@
     "@electron-toolkit/utils": "^4.0.0",
     "dotenv": "^17.3.1",
     "electron-updater": "^6.3.9",
+    "json5": "^2.2.3",
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1"
   },
