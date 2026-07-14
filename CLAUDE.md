@@ -34,7 +34,7 @@ author) orchestrates the character session; this repo is the Electron shell arou
 Chat and speech reach their providers by different routes, and that asymmetry is intentional:
 
 - **Chat goes through IPC to the main process.** `renderer → window.api.chat → ipcMain 'llm:chat' →
-  @charivo/server/openclaw → OpenClaw gateway`. It runs in Node to avoid renderer CORS/PNA limits,
+@charivo/server/openclaw → OpenClaw gateway`. It runs in Node to avoid renderer CORS/PNA limits,
   and to keep the OpenClaw token out of the renderer — that token is an **operator-grade credential**
   for the gateway, not a scoped API key.
 - **TTS is called directly from the renderer** (`@charivo/tts/openai`, `dangerouslyAllowBrowser`).
@@ -51,26 +51,20 @@ newest user turn]`. What actually goes over the wire is decided in the provider 
 
 ### OpenClaw sessions (the part that bites)
 
-The OpenClaw gateway keeps conversation state **server-side**, but opens a **brand-new session for any
-request that carries no session identifier**. Without one, every turn starts over and strands a
-throwaway session.
+The gateway keeps conversation state **server-side**, but opens a brand-new session for any request
+carrying no session identifier. `src/main/index.ts` therefore pins a `sessionKey` (`liveclaw:<uuid>`).
+**Read [docs/openclaw-integration.md](docs/openclaw-integration.md) before touching the chat path** —
+it explains why each of these holds. Do not break them:
 
-`src/main/index.ts` therefore passes a `sessionKey` (`liveclaw:<uuid>`, sent as the OpenAI `user`
-field). Consequences to keep in mind when touching this code:
-
-- With a `sessionKey` set, `@charivo/server`'s provider **drops past turns** and sends only the system
-  prompt plus the newest turn — the gateway already holds the rest. Do not "fix" this by resending
-  history; that flattens a duplicate transcript on top of the session's own.
-- `sessionKey` is **fixed at provider construction**, so starting a new conversation means building a
-  new provider. Rotation happens in exactly two places: the `llm:newConversation` IPC (the New chat
-  button) and window re-create — on macOS the main process outlives its windows, so a fresh window
-  would otherwise resume a conversation the user can no longer see.
-- `clearHistory` rotates **before** clearing local history. Clearing the UI while the gateway still
-  holds the transcript would leave the character answering from a conversation the user thinks is gone.
-- The gateway's OpenAI-compatible endpoint is **off by default**. Without
-  `gateway.http.endpoints.chatCompletions.enabled = true` every chat request fails. See README.
-- The OpenClaw agent's own long-term memory is **orthogonal to sessions** and survives rotation. "New
-  chat" resets conversation context, not the agent's memory. This is expected, not a bug.
+- With a `sessionKey` set, the provider **drops past turns** and sends only the system prompt plus the
+  newest turn. This is intentional. Do not "fix" it by resending history.
+- `sessionKey` is fixed at provider construction, so a new conversation means a **new provider**.
+  Rotation happens in exactly two places: the `llm:newConversation` IPC (New chat) and window
+  re-create — on macOS the main process outlives its windows.
+- `clearHistory` rotates **before** clearing local history, never after.
+- Do not send `x-openclaw-agent-id`; it 400s on gateways whose agent is not named `main`.
+- The agent's long-term memory survives rotation. "New chat" not wiping the character's memory is
+  expected, not a bug to fix here.
 
 Provider changes (session handling, agent routing, model target) belong upstream in the `charivo`
 repo's `packages/server/src/openclaw/`, not patched around here.

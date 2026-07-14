@@ -110,13 +110,9 @@ Verify the gateway before running the app:
 curl http://127.0.0.1:18789/v1/models -H "Authorization: Bearer $OPENCLAW_TOKEN"
 ```
 
-### Conversation sessions
-
-OpenClaw keeps conversation state server-side, but only when a request identifies its session.
-The main process generates one session key per app launch and passes it as `sessionKey`, so turns
-build on each other instead of stranding a throwaway session each time. Clearing the chat rotates
-the key, which is what starts a genuinely new conversation - the old transcript stays behind under
-the old key.
+Chat runs on one OpenClaw session per conversation, and **New chat** starts a fresh one. See
+[docs/openclaw-integration.md](docs/openclaw-integration.md) for how the gateway behaves and why the
+client is built around it.
 
 ### 2. Direct OpenAI TTS
 
