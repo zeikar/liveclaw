@@ -86,14 +86,37 @@ Live2D is already integrated through Charivo renderer attachment.
 
 ### 1. OpenClaw chat provider
 
-Set OpenClaw connection values in `.env`:
+OpenClaw's OpenAI-compatible HTTP API is **disabled by default**. Enable it on the gateway first,
+otherwise every chat request fails:
+
+```bash
+openclaw config set gateway.http.endpoints.chatCompletions.enabled true
+openclaw gateway restart
+```
+
+Then set the connection values in `.env`:
 
 ```bash
 OPENCLAW_TOKEN=your_openclaw_token
 OPENCLAW_BASE_URL=http://127.0.0.1:18789/v1
 ```
 
-`OPENCLAW_BASE_URL` defaults to `http://127.0.0.1:18789/v1`.
+`OPENCLAW_BASE_URL` defaults to `http://127.0.0.1:18789/v1`. The token is the gateway token
+(`gateway.auth.token`); it grants operator-level access to OpenClaw, so keep it local.
+
+Verify the gateway before running the app:
+
+```bash
+curl http://127.0.0.1:18789/v1/models -H "Authorization: Bearer $OPENCLAW_TOKEN"
+```
+
+### Conversation sessions
+
+OpenClaw keeps conversation state server-side, but only when a request identifies its session.
+The main process generates one session key per app launch and passes it as `sessionKey`, so turns
+build on each other instead of stranding a throwaway session each time. Clearing the chat rotates
+the key, which is what starts a genuinely new conversation - the old transcript stays behind under
+the old key.
 
 ### 2. Direct OpenAI TTS
 

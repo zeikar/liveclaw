@@ -1,5 +1,6 @@
 import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
+import { randomUUID } from 'crypto'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { createOpenClawLLMProvider } from '@charivo/server/openclaw'
@@ -15,11 +16,18 @@ if (!openClawToken) {
   )
 }
 
-// OpenClaw is called from the main process (Node.js) to avoid CORS restrictions in the renderer
-const llmProvider = createOpenClawLLMProvider({
-  token: openClawToken,
-  baseURL: openClawBaseURL
-})
+// OpenClaw is called from the main process (Node.js) to avoid CORS restrictions in the renderer.
+// The session key pins the conversation to one OpenClaw session; without it the gateway opens a
+// fresh session per request and nothing carries over between turns. It is fixed at construction,
+// so starting a new conversation means a new provider.
+const createLLMProvider = (): ReturnType<typeof createOpenClawLLMProvider> =>
+  createOpenClawLLMProvider({
+    token: openClawToken,
+    baseURL: openClawBaseURL,
+    sessionKey: `liveclaw:${randomUUID()}`
+  })
+
+let llmProvider = createLLMProvider()
 
 function createWindow(): void {
   // Create the browser window.
@@ -75,6 +83,12 @@ app.whenReady().then(() => {
     return await llmProvider.generateResponse(messages)
   })
 
+  // Clearing the chat has to rotate the session key too, otherwise OpenClaw keeps replying
+  // from the transcript the user just cleared.
+  ipcMain.handle('llm:newConversation', () => {
+    llmProvider = createLLMProvider()
+  })
+
   ipcMain.handle('app:openExternal', async (_, rawUrl: string) => {
     const url = rawUrl?.trim()
     if (!url) return
@@ -98,7 +112,13 @@ app.whenReady().then(() => {
   app.on('activate', function () {
     // On macOS it's common to re-create a window in the app when the
     // dock icon is clicked and there are no other windows open.
-    if (BrowserWindow.getAllWindows().length === 0) createWindow()
+    if (BrowserWindow.getAllWindows().length === 0) {
+      // The main process survived the window close, so the old session key is still loaded.
+      // The new window starts with an empty chat and would otherwise get replies drawn from a
+      // conversation the user can no longer see.
+      llmProvider = createLLMProvider()
+      createWindow()
+    }
   })
 })
 

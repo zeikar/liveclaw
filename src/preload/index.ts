@@ -5,6 +5,7 @@ import { electronAPI } from '@electron-toolkit/preload'
 const api = {
   chat: (messages: Array<{ role: string; content: string }>) =>
     ipcRenderer.invoke('llm:chat', messages),
+  newConversation: () => ipcRenderer.invoke('llm:newConversation'),
   openExternal: (url: string) => ipcRenderer.invoke('app:openExternal', url)
 }
 

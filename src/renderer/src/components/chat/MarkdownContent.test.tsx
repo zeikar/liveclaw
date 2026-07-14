@@ -14,7 +14,7 @@ describe('MarkdownContent', () => {
 
   it('opens links via the main process instead of navigating', () => {
     const openExternal = vi.fn<Window['api']['openExternal']>().mockResolvedValue(undefined)
-    window.api = { chat: vi.fn(), openExternal }
+    window.api = { chat: vi.fn(), newConversation: vi.fn(), openExternal }
 
     render(<MarkdownContent content={'[docs](https://example.com)'} />)
 

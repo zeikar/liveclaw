@@ -13,7 +13,7 @@ type UseCharivoResult = {
   isBusy: boolean
   error: string | null
   sendMessage: (text: string) => Promise<void>
-  clearHistory: () => void
+  clearHistory: () => Promise<void>
 }
 
 export function useCharivo(): UseCharivoResult {
@@ -72,7 +72,17 @@ export function useCharivo(): UseCharivoResult {
     [charivo, isBusy]
   )
 
-  const clearHistory = useCallback(() => {
+  const clearHistory = useCallback(async () => {
+    // Rotate the OpenClaw session first. If it fails, keep the local history rather than
+    // showing an empty chat the character would still answer from.
+    try {
+      await window.api.newConversation()
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      setError(`Failed to start a new conversation: ${message}`)
+      return
+    }
+
     charivo.clearHistory()
     resetMessages()
     setError(null)
