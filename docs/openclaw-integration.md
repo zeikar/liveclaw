@@ -24,6 +24,15 @@ That token is **not a scoped API key** — the docs call the endpoint "full oper
 gateway instance." It can drive any tool the agent's policy allows, which is why the token stays in
 the main process and never reaches the renderer.
 
+### LiveClaw's auto-detection is a guess, not a trust boundary
+
+The gateway token lives in `gateway.auth.token` in `~/.openclaw/openclaw.json` (JSON5, mode `0600`).
+LiveClaw reads it at runtime, but the file is only ever a guess: it cannot show a CLI `--port`
+override, an `OPENCLAW_GATEWAY_PORT` env override, a token OpenClaw resolves through `${…}`
+interpolation, or whether an endpoint flag has gone stale since OpenClaw last started. So LiveClaw
+checks the guess with `GET /v1/models` before presenting the app as configured, and falls back to
+manual entry when that check fails. See `src/main/openclaw-config.ts`.
+
 ## `model` is an agent target, not a model name
 
 `/v1/models` returns _agents_, not backend models:

@@ -94,50 +94,103 @@ openclaw config set gateway.http.endpoints.chatCompletions.enabled true
 openclaw gateway restart
 ```
 
-Then set the connection values in `.env`:
-
-```bash
-OPENCLAW_TOKEN=your_openclaw_token
-OPENCLAW_BASE_URL=http://127.0.0.1:18789/v1
-```
-
-`OPENCLAW_BASE_URL` defaults to `http://127.0.0.1:18789/v1`. The token is the gateway token
-(`gateway.auth.token`); it grants operator-level access to OpenClaw, so keep it local.
-
 Verify the gateway before running the app:
 
 ```bash
-curl http://127.0.0.1:18789/v1/models -H "Authorization: Bearer $OPENCLAW_TOKEN"
+curl http://127.0.0.1:18789/v1/models \
+  -H "Authorization: Bearer $(openclaw config get gateway.auth.token)"
 ```
+
+If OpenClaw is installed and its gateway is reachable, **there is nothing else to configure.**
+LiveClaw reads `gateway.auth.token` and `gateway.port` straight out of `~/.openclaw/openclaw.json`
+(or `$OPENCLAW_CONFIG_PATH`) at runtime, checks them with `GET /v1/models`, and starts chatting. No
+token pasting. An auto-detected token is **never written to LiveClaw's own config**, so rotating it
+inside OpenClaw is picked up automatically the next time LiveClaw launches. The app also reads the
+`gateway.http.endpoints.chatCompletions.enabled` flag from that same file (absent means disabled)
+and shows the fix above in-app if it looks off.
+
+If auto-detection doesn't apply — `gateway.auth.mode` is `password`, the token is a secretRef or a
+`${OPENCLAW_GATEWAY_TOKEN}`-style interpolation, the config file isn't readable, or the detected local
+gateway isn't the one you want to reach (the `GET /v1/models` check catches that mismatch) — the setup
+screen asks for a token and base URL instead. A **manually entered** token _is_
+stored, together with its base URL, in LiveClaw's own `config.json`, and takes precedence over
+auto-detection. Switching that section back to "auto-detected" removes the stored override (which may
+leave the app unconfigured again if auto-detection still doesn't apply — that just brings the setup
+screen back).
+
+Put together, the precedence per field is: LiveClaw `config.json` (manual override) → OpenClaw
+auto-detect → `.env` (development only, see below). One rule applies throughout: any token LiveClaw
+holds implicitly — auto-detected, read from `.env`, or saved earlier — is only ever sent to the
+gateway it was configured for. Point LiveClaw at a different host and it asks for that host's token;
+it never reuses one across origins.
 
 Chat runs on one OpenClaw session per conversation, and **New chat** starts a fresh one. See
 [docs/openclaw-integration.md](docs/openclaw-integration.md) for how the gateway behaves and why the
 client is built around it.
 
-### 2. Direct OpenAI TTS
+### 2. Where settings live
 
-Create `.env` in the project root:
+LiveClaw stores its own settings in `config.json` under `app.getPath('userData')`:
 
-```bash
-VITE_OPENAI_API_KEY=your_openai_api_key
-VITE_OPENAI_TTS_MODEL=gpt-4o-mini-tts
-VITE_OPENAI_TTS_VOICE=marin
-```
+- macOS: `~/Library/Application Support/liveclaw/`
+- Windows: `%APPDATA%\liveclaw\`
+- Linux: `~/.config/liveclaw/`
+
+That file holds the OpenAI API key, the TTS model/voice, and any manually entered OpenClaw override
+(token + base URL). It's plaintext, written `0600` on macOS/Linux; on Windows it inherits the
+per-user ACL of `%APPDATA%` (Node's `chmod` there only toggles the read-only bit, it doesn't restrict
+other accounts).
+
+Blank secret fields in the settings form keep the stored value. **"Remove key" deletes the stored
+OpenAI key** — a key supplied through `.env` in development is disabled by editing `.env`, since the
+app cannot remove what it does not store. Deleting `config.json` resets everything back to
+auto-detected/`.env` defaults.
+
+### 3. Direct OpenAI TTS
+
+Set your OpenAI API key from the in-app settings screen, or via `.env` in development (see below).
 
 Supported models: `tts-1`, `tts-1-hd`, `gpt-4o-mini-tts`
 
 Supported voices: `alloy`, `echo`, `fable`, `marin`, `onyx`, `nova`, `shimmer`
 
-If `VITE_OPENAI_API_KEY` is not set, TTS is disabled and chat still works.
+If no OpenAI key is configured, TTS is disabled and chat still works.
 
-### 3. Character profile
+### 4. Character profile
 
 Character profile can be changed in `src/renderer/src/config/character.ts`.
 
+### 5. `.env` (development fallback only)
+
+`.env` is a fallback consulted per field, and only for fields both `config.json` and OpenClaw
+auto-detection leave empty. It only applies when the app is **not packaged**
+(`app.isPackaged === false`); that check, not `electron-builder.yml`'s `.env` exclusion, is what
+makes it dev-only. The exclusion stays in the packaging config regardless — keeping secrets out of a
+built app is still the right call.
+
+```bash
+# OpenClaw — rarely needed now that the token is auto-detected; only useful for a dev gateway
+# auto-detection can't see (a non-default OPENCLAW_CONFIG_PATH, a CLI --port, etc.)
+OPENCLAW_TOKEN=your_openclaw_token
+OPENCLAW_BASE_URL=http://127.0.0.1:18789/v1
+
+# Direct OpenAI TTS
+OPENAI_API_KEY=your_openai_api_key
+OPENAI_TTS_MODEL=gpt-4o-mini-tts
+OPENAI_TTS_VOICE=marin
+```
+
+`LIVECLAW_USER_DATA_DIR` (dev-only) points `app.getPath('userData')` at a throwaway profile
+directory, useful for testing setup/auto-detection without touching your real `config.json`.
+
 ## Security Note
 
-Direct renderer-side OpenAI usage exposes the API key to the local client runtime.
-Use this setup only for trusted local/dev environments.
+Direct renderer-side OpenAI usage exposes the API key to the local client runtime. Use this setup
+only for trusted local/dev environments.
+
+The OpenClaw gateway token is an **operator-grade credential**, not a scoped API key — keep it local.
+An auto-detected token is never duplicated onto disk; a token you type into the setup screen is
+stored in `config.json` as described above.
 
 ## Roadmap
 

@@ -34,11 +34,21 @@ author) orchestrates the character session; this repo is the Electron shell arou
 Chat and speech reach their providers by different routes, and that asymmetry is intentional:
 
 - **Chat goes through IPC to the main process.** `renderer → window.api.chat → ipcMain 'llm:chat' →
-@charivo/server/openclaw → OpenClaw gateway`. It runs in Node to avoid renderer CORS/PNA limits,
-  and to keep the OpenClaw token out of the renderer — that token is an **operator-grade credential**
-  for the gateway, not a scoped API key.
+@charivo/server/openclaw → OpenClaw gateway`. It runs in Node to avoid renderer CORS/PNA limits.
+  The OpenClaw token is read from OpenClaw's own config by `src/main/openclaw-config.ts`; an
+  **auto-detected** token is never copied into LiveClaw's `config.json` (a **manually entered** one
+  is, together with its base URL, and is origin-bound like every other implicit token thereafter).
+  The settings IPC is write-only for secrets — `settings:get`/`settings:save` exchange
+  `openClawTokenSet` and `openaiApiKeySource`, never the values. **Every implicit token — auto-detected,
+  `.env`-derived, or previously stored — is bound to the origin it was configured for and is never
+  sent anywhere else; only a token submitted in the current request can establish credentials for a
+  new origin.** The `GET /v1/models` check `settings:test` runs is a readiness/correctness check, not
+  a trust boundary — `llm:chat` and provider construction do not depend on it. That token is an
+  **operator-grade credential** for the gateway, not a scoped API key.
 - **TTS is called directly from the renderer** (`@charivo/tts/openai`, `dangerouslyAllowBrowser`).
-  This exposes the OpenAI key to the renderer and is accepted for local/dev use only.
+  The OpenAI key reaches the renderer through the `tts:getConfig` IPC at runtime rather than
+  `import.meta.env`, so no key is baked into the bundle — but it's still live in renderer memory, and
+  this is accepted for local/dev use only.
 
 ### The renderer's Charivo session
 
@@ -59,8 +69,12 @@ it explains why each of these holds. Do not break them:
 - With a `sessionKey` set, the provider **drops past turns** and sends only the system prompt plus the
   newest turn. This is intentional. Do not "fix" it by resending history.
 - `sessionKey` is fixed at provider construction, so a new conversation means a **new provider**.
-  Rotation happens in exactly two places: the `llm:newConversation` IPC (New chat) and window
-  re-create — on macOS the main process outlives its windows.
+  Rotation happens in **three** places: the `llm:newConversation` IPC (New chat), window re-create —
+  on macOS the main process outlives its windows — and a `settings:save` that changes the
+  **effective** OpenClaw token or base URL (which also clears the renderer transcript, since the old
+  messages belong to a session key that no longer exists). That third rotation cannot land mid-turn:
+  the settings chip is disabled while a reply is in flight, and the composer is disabled while the
+  settings modal is open.
 - `clearHistory` rotates **before** clearing local history, never after.
 - Do not send `x-openclaw-agent-id`; it 400s on gateways whose agent is not named `main`.
 - The agent's long-term memory survives rotation. "New chat" not wiping the character's memory is
@@ -71,8 +85,9 @@ repo's `packages/server/src/openclaw/`, not patched around here.
 
 ## Testing
 
-Vitest is configured for the **renderer only** (`src/renderer/src/**/*.test.{ts,tsx}`, jsdom). The main
-and preload processes have no test setup.
+Vitest runs as two projects (`vitest.config.ts`): `renderer`
+(`src/renderer/src/**/*.test.{ts,tsx}`, jsdom) and `main` (`src/main/**/*.test.ts`, node, `electron`
+mocked). `npm test` runs both. The preload process has no test setup.
 
 - Every renderer test must stub `window.api` — the Charivo session singleton calls it. Missing a newly
   added `api` method breaks typecheck across all test files that assign `window.api`.
