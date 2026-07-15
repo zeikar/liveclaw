@@ -43,6 +43,8 @@ type SettingsView = {
   ttsModel: string
   ttsVoice: string
   openClawSource: 'manual' | 'openclaw-config' | 'env' | 'none'
+  // True when the effective OpenClaw gateway is a detected no-auth gateway (no token needed at all).
+  openClawNoAuth: boolean
   openClawBaseURLResolved: string
   openClawTokenOrigin: string | null
   openClawConfigPath: string

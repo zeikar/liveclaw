@@ -23,7 +23,9 @@ const safeOrigin = (url: string): string | null => {
 const openClawStatusMessage = (view: SettingsView): string => {
   switch (view.openClawSource) {
     case 'openclaw-config':
-      return `Using the token from ${view.openClawConfigPath}`
+      return view.openClawNoAuth
+        ? `Using the no-auth gateway from ${view.openClawConfigPath}`
+        : `Using the token from ${view.openClawConfigPath}`
     case 'env':
       return 'Using OPENCLAW_TOKEN from your environment'
     case 'manual':

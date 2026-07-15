@@ -63,6 +63,17 @@ describe('detectOpenClaw', () => {
     expect(result.error).not.toBeNull()
   })
 
+  it('treats gateway.auth.mode "none" as a usable no-auth gateway', () => {
+    useConfig(JSON.stringify({ gateway: { port: 18789, auth: { mode: 'none' } } }))
+
+    const result = detectOpenClaw()
+
+    expect(result.token).toBe('')
+    expect(result.noAuth).toBe(true)
+    expect(result.error).toBeNull()
+    expect(result.origin).toBe('http://127.0.0.1:18789')
+  })
+
   it('derives baseURL and origin from a configured gateway.port', () => {
     useConfig(JSON.stringify({ gateway: { port: 4000, auth: { token: 'sekrit' } } }))
 

@@ -9,6 +9,7 @@ const view: SettingsView = {
   ttsModel: '',
   ttsVoice: '',
   openClawSource: 'openclaw-config',
+  openClawNoAuth: false,
   openClawBaseURLResolved: 'http://127.0.0.1:18789/v1',
   openClawTokenOrigin: 'http://127.0.0.1:18789',
   openClawConfigPath: '/home/user/.openclaw/openclaw.json',

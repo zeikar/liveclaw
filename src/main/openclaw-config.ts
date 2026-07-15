@@ -16,8 +16,10 @@ export interface OpenClawDetection {
   /** Empty string means no literal token was detected. */
   token: string
   baseURL: string
-  /** Origin the detected token is configured for; null when no token was detected. */
+  /** Origin the detected gateway is configured for; null when no usable gateway was detected. */
   origin: string | null
+  /** True when the gateway itself requires no auth token (gateway.auth.mode === 'none'). */
+  noAuth: boolean
   chatCompletionsEnabled: boolean
   error: string | null
 }
@@ -36,6 +38,7 @@ function detectionResult(baseURL: string, error: string | null): OpenClawDetecti
     token: '',
     baseURL,
     origin: null,
+    noAuth: false,
     chatCompletionsEnabled: false,
     error
   }
@@ -73,13 +76,16 @@ export function detectOpenClaw(): OpenClawDetection {
   const auth = isPlainObject(gateway.auth) ? gateway.auth : {}
   const rawToken = auth.token
   const mode = auth.mode
+  const noAuth = mode === 'none'
   const modeAllowsToken = mode === 'token' || mode === undefined
   const isLiteralToken =
     typeof rawToken === 'string' && rawToken.length > 0 && !rawToken.includes('${')
 
   let token = ''
   let error: string | null = null
-  if (isLiteralToken && modeAllowsToken) {
+  if (noAuth) {
+    // The gateway itself requires no auth token — nothing to detect, and nothing to error about.
+  } else if (isLiteralToken && modeAllowsToken) {
     token = rawToken
   } else {
     error = 'OpenClaw is not using a literal gateway token; enter one manually.'
@@ -94,7 +100,8 @@ export function detectOpenClaw(): OpenClawDetection {
     path,
     token,
     baseURL,
-    origin: token ? new URL(baseURL).origin : null,
+    origin: token || noAuth ? new URL(baseURL).origin : null,
+    noAuth,
     chatCompletionsEnabled,
     error
   }

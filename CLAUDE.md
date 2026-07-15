@@ -38,6 +38,9 @@ Chat and speech reach their providers by different routes, and that asymmetry is
   The OpenClaw token is read from OpenClaw's own config by `src/main/openclaw-config.ts`; an
   **auto-detected** token is never copied into LiveClaw's `config.json` (a **manually entered** one
   is, together with its base URL, and is origin-bound like every other implicit token thereafter).
+  Effective base URL precedence: `config.json` manual override → an explicitly-set dev
+  `OPENCLAW_BASE_URL` → OpenClaw auto-detect → the loopback default — auto-detection is a guess an
+  explicit dev override can correct (e.g. a CLI `--port` the config file can't see).
   The settings IPC is write-only for secrets — `settings:get`/`settings:save` exchange
   `openClawTokenSet` and `openaiApiKeySource`, never the values. **Every implicit token — auto-detected,
   `.env`-derived, or previously stored — is bound to the origin it was configured for and is never

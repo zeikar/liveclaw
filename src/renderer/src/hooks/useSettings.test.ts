@@ -15,6 +15,7 @@ const view = (overrides: Partial<SettingsView> = {}): SettingsView => ({
   ttsModel: '',
   ttsVoice: '',
   openClawSource: 'openclaw-config',
+  openClawNoAuth: false,
   openClawBaseURLResolved: LOCAL_BASE,
   openClawTokenOrigin: LOCAL_ORIGIN,
   openClawConfigPath: '/home/user/.openclaw/openclaw.json',

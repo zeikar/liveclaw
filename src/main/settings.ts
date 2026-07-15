@@ -176,6 +176,8 @@ type ResolvedOpenClaw = {
   origin: string
   token: string
   source: 'manual' | 'openclaw-config' | 'env' | 'none'
+  /** True when the effective gateway is a detected no-auth gateway (no token needed at all). */
+  noAuth: boolean
   detection: OpenClawDetection
 }
 
@@ -185,24 +187,36 @@ type ResolvedOpenClaw = {
 const resolveOpenClaw = (override: StoredOpenClaw): ResolvedOpenClaw => {
   const detection = detectOpenClaw()
 
-  // Effective base URL precedence per decision 8. detection.baseURL is always populated, so the env
-  // and default fallbacks only matter if that ever changes.
+  // Effective base URL precedence per decision 3/8: config.json override → an explicitly-set dev
+  // OPENCLAW_BASE_URL → OpenClaw auto-detect → default. Auto-detection is a guess (it cannot see a
+  // CLI --port or OPENCLAW_GATEWAY_PORT override), so an explicit dev env gateway outranks it even
+  // when detection otherwise succeeded. detection.baseURL is only used as a fallback when detection
+  // actually found a usable gateway (a real token, or no error at all — e.g. a no-auth gateway); a
+  // failed detection's baseURL is just a guessed default.
+  const detectionSucceeded = detection.token !== '' || detection.error === null
   const envBase = !app.isPackaged ? process.env.OPENCLAW_BASE_URL?.trim() || '' : ''
-  const baseURL = override?.baseURL || detection.baseURL || envBase || DEFAULT_OPENCLAW_BASE_URL
+  const baseURL =
+    override?.baseURL ||
+    envBase ||
+    (detectionSucceeded ? detection.baseURL : '') ||
+    DEFAULT_OPENCLAW_BASE_URL
   const origin = new URL(baseURL).origin
 
   // Decision 2: an implicit token is bound to the origin it was configured for, so only a candidate
   // whose origin equals the effective gateway may be used. This is the line that stops a detected /
   // env / stored token from ever being sent to a different origin than the one it belongs to.
   const match = candidates(override, detection).find((candidate) => candidate.origin === origin)
-
-  return {
-    baseURL,
-    origin,
-    token: match?.token ?? '',
-    source: match?.source ?? 'none',
-    detection
+  if (match) {
+    return { baseURL, origin, token: match.token, source: match.source, noAuth: false, detection }
   }
+
+  // A no-auth gateway needs no token at all: if nothing else claims this origin but detection found
+  // a no-auth gateway there, the gateway is still configured — just without a bearer token.
+  if (detection.noAuth && detection.origin === origin) {
+    return { baseURL, origin, token: '', source: 'openclaw-config', noAuth: true, detection }
+  }
+
+  return { baseURL, origin, token: '', source: 'none', noAuth: false, detection }
 }
 
 const tokenForOrigin = (
@@ -256,6 +270,7 @@ export const getSettingsView = (): SettingsView => {
     ttsModel: stored.ttsModel || envTTSModel(),
     ttsVoice: stored.ttsVoice || envTTSVoice(),
     openClawSource: resolved.source,
+    openClawNoAuth: resolved.noAuth,
     openClawBaseURLResolved: resolved.baseURL,
     openClawTokenOrigin: resolved.token !== '' ? origin : null,
     openClawConfigPath: detection.path,
@@ -446,12 +461,17 @@ export const testOpenClawConnection = async (raw: unknown): Promise<SettingsTest
         ? submitted
         : (tokenForOrigin(target.origin, override, resolved.detection)?.token ?? '')
 
-    if (token === '') {
+    // A no-auth gateway needs no token at all: only trust that when nothing was submitted and
+    // detection itself found the no-auth gateway at this exact target origin.
+    const noAuthGateway =
+      submitted === '' && resolved.detection.noAuth && resolved.detection.origin === target.origin
+
+    if (token === '' && !noAuthGateway) {
       return { ok: false, message: 'Enter the OpenClaw token for this gateway.' }
     }
 
     const response = await fetch(modelsEndpoint(target), {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: token !== '' ? { Authorization: `Bearer ${token}` } : {},
       signal: AbortSignal.timeout(5000)
     })
 

@@ -56,7 +56,7 @@ export function useCharivo(): UseCharivoResult {
           message.includes('Connection error')
         ) {
           setError(
-            'Cannot connect to OpenClaw. Make sure OpenClaw is running. (http://127.0.0.1:18789)'
+            'Cannot connect to OpenClaw. Make sure OpenClaw is running and the configured gateway is reachable.'
           )
         } else if (message.includes('401') || message.includes('Unauthorized')) {
           setError(`Authentication error: check your API token. (${message})`)

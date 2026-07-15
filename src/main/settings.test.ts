@@ -72,6 +72,10 @@ const detectedToken = (token: string, extra: object = {}): object => ({
   gateway: { port: 18789, auth: { token }, ...extra }
 })
 
+const noAuthGateway = (extra: object = {}): object => ({
+  gateway: { port: 18789, auth: { mode: 'none' }, ...extra }
+})
+
 const input = (over: Partial<SettingsInput> & { openClaw: OpenClawInput }): SettingsInput => ({
   openaiApiKey: { action: 'keep' },
   ttsModel: '',
@@ -222,6 +226,36 @@ describe('the OpenClaw state machine', () => {
   })
 })
 
+describe('a no-auth gateway', () => {
+  it('is treated as configured, not none', () => {
+    useDetection(noAuthGateway())
+
+    const view = getSettingsView()
+
+    expect(view.openClawSource).toBe('openclaw-config')
+    expect(view.openClawNoAuth).toBe(true)
+    expect(view.openClawDetectionError).toBeNull()
+  })
+
+  it('resolves getEffectiveOpenClaw to an empty token at the detected base URL', () => {
+    useDetection(noAuthGateway())
+
+    expect(getEffectiveOpenClaw()).toEqual({ token: '', baseURL: LOCAL_BASE })
+  })
+
+  it('tests the connection without an Authorization header', async () => {
+    useDetection(noAuthGateway())
+    fetchMock.mockResolvedValue({ ok: true, status: 200 })
+
+    const result = await testOpenClawConnection({ token: '', baseURL: '' })
+
+    expect(result).toEqual({ ok: true, message: 'Connected to OpenClaw.' })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    const [, options] = fetchMock.mock.calls[0]
+    expect(options.headers).toEqual({})
+  })
+})
+
 describe('the OpenAI key state machine', () => {
   const keepOpenClaw: OpenClawInput = {
     mode: 'manual',
@@ -321,6 +355,29 @@ describe('precedence', () => {
     expect(getEffectiveOpenClaw().token).toBe('env-tok')
   })
 
+  it('falls through to the dev env base URL when detection found no usable gateway', () => {
+    // No OpenClaw config file exists (detectionDir points at a nonexistent path by default), so
+    // detection's baseURL is only a guessed default — decision 8 says the dev env base URL should
+    // win over that guess, and the env token's origin then matches it.
+    vi.stubEnv('OPENCLAW_TOKEN', 'env-tok')
+    vi.stubEnv('OPENCLAW_BASE_URL', 'https://dev.example/v1')
+
+    expect(getEffectiveOpenClaw()).toEqual({ token: 'env-tok', baseURL: 'https://dev.example/v1' })
+    expect(getSettingsView().openClawSource).toBe('env')
+  })
+
+  it('lets an explicit dev OPENCLAW_BASE_URL override a successful auto-detection', () => {
+    // Detection succeeds (a literal token at the default local origin), but the developer has also
+    // set an explicit dev gateway in .env — decision 3: auto-detection is a guess an explicit
+    // configuration may correct (e.g. a CLI --port the config file can't see).
+    useDetection(detectedToken('detected-tok'))
+    vi.stubEnv('OPENCLAW_TOKEN', 'env-tok')
+    vi.stubEnv('OPENCLAW_BASE_URL', 'https://dev.example/v1')
+
+    expect(getEffectiveOpenClaw()).toEqual({ token: 'env-tok', baseURL: 'https://dev.example/v1' })
+    expect(getSettingsView().openClawSource).toBe('env')
+  })
+
   it('prefers detection over env at the same origin', () => {
     useDetection(detectedToken('detected-tok'))
     vi.stubEnv('OPENCLAW_TOKEN', 'env-tok')
@@ -384,6 +441,7 @@ describe('the settings view', () => {
         'openClawConfigPath',
         'openClawDetectedOrigin',
         'openClawDetectionError',
+        'openClawNoAuth',
         'openClawSource',
         'openClawTokenOrigin',
         'openaiApiKeySource',

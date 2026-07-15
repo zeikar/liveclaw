@@ -13,6 +13,7 @@ const baseView = (overrides: Partial<SettingsView> = {}): SettingsView => ({
   ttsModel: '',
   ttsVoice: '',
   openClawSource: 'openclaw-config',
+  openClawNoAuth: false,
   openClawBaseURLResolved: LOCAL_BASE,
   openClawTokenOrigin: LOCAL_ORIGIN,
   openClawConfigPath: CONFIG_PATH,
@@ -64,6 +65,14 @@ describe('SettingsForm', () => {
 
     await waitFor(() => expect(saveSettingsMock).toHaveBeenCalledTimes(1))
     expect(saveSettingsMock.mock.calls[0][0].openClaw).toEqual({ mode: 'auto' })
+  })
+
+  it('a no-auth gateway shows no-token wording instead of "Using the token from"', () => {
+    const view = baseView({ openClawNoAuth: true })
+    render(<SettingsForm view={view} connection={null} submitLabel="Save" onSaved={vi.fn()} />)
+
+    expect(screen.getByText(`Using the no-auth gateway from ${CONFIG_PATH}`)).toBeTruthy()
+    expect(screen.queryByText(`Using the token from ${CONFIG_PATH}`)).toBeNull()
   })
 
   it('openclaw-config source with a stored tokenless base URL starts manual mode on and Save keeps the override', async () => {

@@ -118,11 +118,13 @@ auto-detection. Switching that section back to "auto-detected" removes the store
 leave the app unconfigured again if auto-detection still doesn't apply — that just brings the setup
 screen back).
 
-Put together, the precedence per field is: LiveClaw `config.json` (manual override) → OpenClaw
-auto-detect → `.env` (development only, see below). One rule applies throughout: any token LiveClaw
-holds implicitly — auto-detected, read from `.env`, or saved earlier — is only ever sent to the
-gateway it was configured for. Point LiveClaw at a different host and it asks for that host's token;
-it never reuses one across origins.
+Put together, the precedence per field is: LiveClaw `config.json` (manual override) → an explicitly-set
+dev `OPENCLAW_BASE_URL` (`.env`, development only) → OpenClaw auto-detect → the loopback default —
+auto-detection is a guess (it can't see a CLI `--port` or `OPENCLAW_GATEWAY_PORT` override), so an
+explicit dev override corrects it rather than the other way around. One rule applies throughout: any
+token LiveClaw holds implicitly — auto-detected, read from `.env`, or saved earlier — is only ever
+sent to the gateway it was configured for. Point LiveClaw at a different host and it asks for that
+host's token; it never reuses one across origins.
 
 Chat runs on one OpenClaw session per conversation, and **New chat** starts a fresh one. See
 [docs/openclaw-integration.md](docs/openclaw-integration.md) for how the gateway behaves and why the
@@ -163,10 +165,11 @@ Character profile can be changed in `src/renderer/src/config/character.ts`.
 ### 5. `.env` (development fallback only)
 
 `.env` is a fallback consulted per field, and only for fields both `config.json` and OpenClaw
-auto-detection leave empty. It only applies when the app is **not packaged**
-(`app.isPackaged === false`); that check, not `electron-builder.yml`'s `.env` exclusion, is what
-makes it dev-only. The exclusion stays in the packaging config regardless — keeping secrets out of a
-built app is still the right call.
+auto-detection leave empty — except an explicitly-set `OPENCLAW_BASE_URL`, which overrides a
+successful auto-detection too, since auto-detection is a guess a CLI `--port` can invalidate. It only
+applies when the app is **not packaged** (`app.isPackaged === false`); that check, not
+`electron-builder.yml`'s `.env` exclusion, is what makes it dev-only. The exclusion stays in the
+packaging config regardless — keeping secrets out of a built app is still the right call.
 
 ```bash
 # OpenClaw — rarely needed now that the token is auto-detected; only useful for a dev gateway
