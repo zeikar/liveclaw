@@ -8,6 +8,7 @@ import { SetupScreen } from './components/settings/SetupScreen'
 import { APP_CHARACTER } from './config/character'
 import { useCharivo } from './hooks/useCharivo'
 import { useSettings } from './hooks/useSettings'
+import { useSTT } from './hooks/useSTT'
 
 const chipClass =
   'rounded-full border border-white/10 bg-slate-900/70 px-3 py-1.5 text-xs font-bold text-slate-100 backdrop-blur transition hover:border-white/25 hover:bg-slate-800/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 disabled:cursor-not-allowed disabled:opacity-40'
@@ -23,12 +24,20 @@ function App(): React.JSX.Element {
     clearHistory,
     clearLocalHistory
   } = useCharivo()
+  const { isRecording, isStarting, isTranscribing, error: sttError, toggle } = useSTT()
   const [input, setInput] = useState('')
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
 
+  const sttEnabled = view?.openaiApiKeySource !== 'none'
+  const sttActive = isRecording || isStarting || isTranscribing
+  // Both a chat error and a fresh STT failure can be live at once; joining instead of `??` keeps
+  // a new STT error from being hidden behind a stale chat error (or vice versa).
+  const visibleError = [error, sttError].filter(Boolean).join(' · ') || null
+
   const handleSend = async (): Promise<void> => {
     const text = input.trim()
-    if (!text) return
+    // Recording/transcribing must resolve to a reviewable transcript before a turn can send.
+    if (!text || sttActive) return
     setInput('')
     await sendMessage(text)
   }
@@ -38,6 +47,13 @@ function App(): React.JSX.Element {
       e.preventDefault()
       handleSend()
     }
+  }
+
+  const handleToggleMic = async (): Promise<void> => {
+    const transcript = await toggle()
+    if (!transcript) return
+    // Append, never replace or auto-send, so a partially-typed message survives.
+    setInput((prev) => (prev.trim() ? `${prev} ${transcript}` : transcript))
   }
 
   const handleSettingsSaved = (result: SettingsSaveResult): void => {
@@ -105,9 +121,11 @@ function App(): React.JSX.Element {
           <div className="absolute right-4 top-4 z-20 flex items-center gap-2">
             <button
               className={chipClass}
-              disabled={isBusy}
+              // A settings save re-runs applySTTSettings/detachSTT, which would orphan a live
+              // recorder, so the chip stays closed for the whole recording lifecycle.
+              disabled={isBusy || sttActive}
               onClick={() => {
-                if (!isBusy) setIsSettingsOpen(true)
+                if (!isBusy && !sttActive) setIsSettingsOpen(true)
               }}
             >
               Settings
@@ -123,7 +141,7 @@ function App(): React.JSX.Element {
             key={`messages:${messages.length}:loading:${isReplyLoading ? 1 : 0}`}
             messages={messages}
             isLoading={isReplyLoading}
-            error={error}
+            error={visibleError}
           />
 
           <ChatComposer
@@ -132,9 +150,14 @@ function App(): React.JSX.Element {
             isLoading={isReplyLoading}
             isBusy={isBusy}
             isDisabled={isSettingsOpen}
+            sttEnabled={sttEnabled}
+            isRecording={isRecording}
+            isStarting={isStarting}
+            isTranscribing={isTranscribing}
             onInputChange={setInput}
             onSend={handleSend}
             onKeyDown={handleKeyDown}
+            onToggleMic={handleToggleMic}
           />
         </div>
 
