@@ -14,6 +14,7 @@ type UseCharivoResult = {
   error: string | null
   sendMessage: (text: string) => Promise<void>
   clearHistory: () => Promise<void>
+  clearLocalHistory: () => void
 }
 
 export function useCharivo(): UseCharivoResult {
@@ -88,5 +89,13 @@ export function useCharivo(): UseCharivoResult {
     setError(null)
   }, [charivo])
 
-  return { messages, isLoading, isBusy, error, sendMessage, clearHistory }
+  const clearLocalHistory = useCallback(() => {
+    // No window.api.newConversation() here: main already rotated the provider during the save, so
+    // the session key is fresh and only the local transcript needs to catch up.
+    charivo.clearHistory()
+    resetMessages()
+    setError(null)
+  }, [charivo])
+
+  return { messages, isLoading, isBusy, error, sendMessage, clearHistory, clearLocalHistory }
 }

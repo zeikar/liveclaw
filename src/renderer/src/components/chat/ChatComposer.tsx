@@ -3,6 +3,7 @@ type ChatComposerProps = {
   input: string
   isLoading: boolean
   isBusy: boolean
+  isDisabled?: boolean
   onInputChange: (value: string) => void
   onSend: () => void
   onKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void
@@ -13,6 +14,7 @@ export function ChatComposer({
   input,
   isLoading,
   isBusy,
+  isDisabled = false,
   onInputChange,
   onSend,
   onKeyDown
@@ -27,12 +29,12 @@ export function ChatComposer({
           value={input}
           onChange={(e) => onInputChange(e.target.value)}
           onKeyDown={onKeyDown}
-          disabled={isLoading}
+          disabled={isLoading || isDisabled}
         />
         <button
           className="h-10 rounded-xl bg-blue-500 px-4 text-sm font-semibold text-white transition hover:bg-blue-400 disabled:cursor-not-allowed disabled:opacity-50"
           onClick={onSend}
-          disabled={isBusy || !input.trim()}
+          disabled={isBusy || isDisabled || !input.trim()}
         >
           Send
         </button>

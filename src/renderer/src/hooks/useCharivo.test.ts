@@ -77,6 +77,20 @@ describe('useCharivo', () => {
     expect(result.current.error).toBeNull()
   })
 
+  it('clearLocalHistory empties messages without rotating the OpenClaw session', async () => {
+    chatMock.mockResolvedValue('hi')
+    const { result } = renderHook(() => useCharivo())
+    await act(() => result.current.sendMessage('Hello'))
+    expect(result.current.messages).toHaveLength(2)
+
+    act(() => {
+      result.current.clearLocalHistory()
+    })
+
+    expect(result.current.messages).toEqual([])
+    expect(newConversationMock).not.toHaveBeenCalled()
+  })
+
   it('keeps the history when the session rotation fails', async () => {
     chatMock.mockResolvedValue('hi')
     newConversationMock.mockRejectedValue(new Error('gateway is down'))

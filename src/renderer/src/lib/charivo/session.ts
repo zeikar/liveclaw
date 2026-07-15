@@ -12,27 +12,31 @@ const llmClient: LLMClient = {
 const charivo = new Charivo()
 const llmManager = createLLMManager(llmClient)
 
-const attachDirectOpenAITTS = (): void => {
-  const apiKey = import.meta.env.VITE_OPENAI_API_KEY?.trim()
+charivo.attachLLM(llmManager)
+charivo.setCharacter(APP_CHARACTER)
+
+// Applies the TTS config that now arrives over the tts:getConfig IPC at runtime instead of being
+// inlined into the bundle at build time. Synchronous on purpose: the settings gate guarantees no
+// speech can be in flight when this runs, so it never has to stop the manager first.
+export const applyTTSSettings = (config: TTSConfig): boolean => {
+  charivo.detachTTS()
+
+  const apiKey = config.openaiApiKey.trim()
   if (!apiKey) {
-    console.info('[TTS] VITE_OPENAI_API_KEY is not set. TTS is disabled.')
-    return
+    console.info('[TTS] No OpenAI API key configured. TTS is disabled.')
+    return false
   }
 
   const ttsPlayer = createOpenAITTSPlayer({
     apiKey,
-    defaultModel: toModel(import.meta.env.VITE_OPENAI_TTS_MODEL),
-    defaultVoice: toVoice(import.meta.env.VITE_OPENAI_TTS_VOICE),
+    defaultModel: toModel(config.ttsModel),
+    defaultVoice: toVoice(config.ttsVoice),
     // The Electron renderer is a browser context; the key stays local to this desktop app.
     dangerouslyAllowBrowser: true
   })
-  const ttsManager = createTTSManager(ttsPlayer)
-  charivo.attachTTS(ttsManager)
+  charivo.attachTTS(createTTSManager(ttsPlayer))
+  return true
 }
-
-charivo.attachLLM(llmManager)
-attachDirectOpenAITTS()
-charivo.setCharacter(APP_CHARACTER)
 
 type MessageListener = (messages: Message[]) => void
 

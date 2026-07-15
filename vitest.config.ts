@@ -13,11 +13,7 @@ export default defineConfig({
         test: {
           name: 'renderer',
           environment: 'jsdom',
-          include: ['src/renderer/src/**/*.test.{ts,tsx}'],
-          env: {
-            // Keep TTS detached in tests even if the shell has a real key set.
-            VITE_OPENAI_API_KEY: ''
-          }
+          include: ['src/renderer/src/**/*.test.{ts,tsx}']
         }
       },
       {

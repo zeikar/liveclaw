@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
+  applyTTSSettings,
   getCharivoInstance,
   getMessagesSnapshot,
   resetMessages,
@@ -97,5 +98,19 @@ describe('session message history', () => {
     expect(listener).toHaveBeenLastCalledWith([])
 
     unsubscribe()
+  })
+})
+
+describe('applyTTSSettings', () => {
+  const config: TTSConfig = { openaiApiKey: '', ttsModel: '', ttsVoice: '' }
+
+  it('returns false when no OpenAI API key is configured', () => {
+    expect(applyTTSSettings({ ...config, openaiApiKey: '' })).toBe(false)
+  })
+
+  it('returns true when a key is provided', () => {
+    expect(applyTTSSettings({ ...config, openaiApiKey: 'sk-dummy' })).toBe(true)
+    // Leave the singleton detached so no later test can fire a real speech request.
+    applyTTSSettings({ ...config, openaiApiKey: '' })
   })
 })
