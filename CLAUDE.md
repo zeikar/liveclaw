@@ -52,6 +52,12 @@ Chat and speech reach their providers by different routes, and that asymmetry is
   The OpenAI key reaches the renderer through the `tts:getConfig` IPC at runtime rather than
   `import.meta.env`, so no key is baked into the bundle — but it's still live in renderer memory, and
   this is accepted for local/dev use only.
+- **STT mirrors TTS**, also called directly from the renderer (`@charivo/stt/openai`,
+  `dangerouslyAllowBrowser`) and reusing the same OpenAI key delivered by `tts:getConfig` — there is
+  no separate settings field or IPC for it — so it carries the same live-in-renderer-memory,
+  local/dev-only caveat. `src/main/index.ts` grants the microphone itself, via
+  `setPermissionRequestHandler`/`setPermissionCheckHandler` scoped to audio-only requests from the
+  app's own renderer.
 
 ### The renderer's Charivo session
 

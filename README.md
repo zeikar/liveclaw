@@ -34,9 +34,10 @@ Prebuilt installers for each release are on the [latest release page](https://gi
 - **React + TypeScript** - Renderer UI
 - **electron-vite** - Build tooling
 - **Live2D** (`@charivo/render-live2d`, `@charivo/render`) - Character model rendering and motion playback
-- **Charivo** (`@charivo/core`, `@charivo/llm`, `@charivo/tts`) - Character session orchestration (LLM/TTS/Renderer)
+- **Charivo** (`@charivo/core`, `@charivo/llm`, `@charivo/tts`, `@charivo/stt`) - Character session orchestration (LLM/TTS/STT/Renderer)
 - **[OpenClaw](https://openclaw.ai/)** (`@charivo/server/openclaw`) - Local LLM backend for chat
 - **OpenAI TTS** (`@charivo/tts/openai`) - Direct renderer-side speech synthesis for local use
+- **OpenAI STT** (`@charivo/stt/openai`) - Direct renderer-side speech-to-text (OpenAI Whisper) for local use
 
 ## Architecture
 
@@ -61,7 +62,8 @@ Prebuilt installers for each release are on the [latest release page](https://gi
 
 ```txt
 [Renderer - React]
-  @charivo/tts/openai
+  @charivo/tts/openai (speech synthesis)
+  @charivo/stt/openai (voice input / Whisper)
        |
        | HTTPS
        v
@@ -69,7 +71,7 @@ Prebuilt installers for each release are on the [latest release page](https://gi
 ```
 
 OpenClaw API calls are handled in the Electron **main process (Node.js)** to avoid renderer CORS/PNA limits.
-TTS is intentionally direct from the renderer for local development convenience.
+TTS and STT (voice input) are intentionally direct from the renderer for local development convenience.
 
 ## Live2D Integration
 
@@ -84,7 +86,7 @@ Live2D is already integrated through Charivo renderer attachment.
 ## Prerequisites
 
 - [OpenClaw](https://openclaw.ai/) installed and running (default: `http://127.0.0.1:18789`)
-- OpenAI API key for TTS
+- OpenAI API key — optional; required only for TTS and voice input (STT)
 - Node.js and npm
 
 ## Configuration
@@ -153,7 +155,7 @@ OpenAI key** — a key supplied through `.env` in development is disabled by edi
 app cannot remove what it does not store. Deleting `config.json` resets everything back to
 auto-detected/`.env` defaults.
 
-### 3. Direct OpenAI TTS
+### 3. Direct OpenAI TTS and voice input (STT)
 
 Set your OpenAI API key from the in-app settings screen, or via `.env` in development (see below).
 
@@ -162,6 +164,14 @@ Supported models: `tts-1`, `tts-1-hd`, `gpt-4o-mini-tts`
 Supported voices: `alloy`, `echo`, `fable`, `marin`, `onyx`, `nova`, `shimmer`
 
 If no OpenAI key is configured, TTS is disabled and chat still works.
+
+The same key also enables voice input: a mic button appears in the composer (hidden when no key is
+set). Press it to record, press again to stop - the Whisper transcript is appended to the composer
+input for you to review or edit, and is not sent automatically.
+
+STT transcription uses `whisper-1`; the models and voices above are TTS-only (there is no separate STT
+model setting). The first recording may prompt for OS microphone access — LiveClaw's main process
+grants only audio requests from its own renderer window.
 
 ### 4. Character profile
 
@@ -182,7 +192,7 @@ packaging config regardless — keeping secrets out of a built app is still the 
 OPENCLAW_TOKEN=your_openclaw_token
 OPENCLAW_BASE_URL=http://127.0.0.1:18789/v1
 
-# Direct OpenAI TTS
+# Direct OpenAI TTS and STT (the key is shared; the model/voice below are TTS-only)
 OPENAI_API_KEY=your_openai_api_key
 OPENAI_TTS_MODEL=gpt-4o-mini-tts
 OPENAI_TTS_VOICE=marin
@@ -193,8 +203,8 @@ directory, useful for testing setup/auto-detection without touching your real `c
 
 ## Security Note
 
-Direct renderer-side OpenAI usage exposes the API key to the local client runtime. Use this setup
-only for trusted local/dev environments.
+Direct renderer-side OpenAI usage (TTS and voice input/STT) exposes the API key to the local client
+runtime. Use this setup only for trusted local/dev environments.
 
 The OpenClaw gateway token is an **operator-grade credential**, not a scoped API key — keep it local.
 An auto-detected token is never duplicated onto disk; a token you type into the setup screen is
@@ -206,7 +216,7 @@ stored in `config.json` as described above.
 - [x] Chat UI (message history, error handling)
 - [x] Live2D rendering integration (`@charivo/render-live2d`)
 - [x] Direct OpenAI TTS integration (`@charivo/tts/openai`)
-- [ ] Speech-to-text (`@charivo/stt`)
+- [x] Speech-to-text (`@charivo/stt`)
 - [ ] WebSocket support for real-time streaming responses
 
 ## Recommended IDE Setup
