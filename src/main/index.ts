@@ -1,5 +1,6 @@
 import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
+import { pathToFileURL } from 'url'
 import { randomUUID } from 'crypto'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
@@ -14,6 +15,10 @@ import {
   saveSettings,
   testOpenClawConnection
 } from './settings'
+
+// Shared between isOwnRendererURL and createWindow's loadFile call below: the permission check
+// must track the exact renderer entry createWindow loads, or packaged STT silently breaks.
+const RENDERER_ENTRY_PATH = join(__dirname, '../renderer/index.html')
 
 // OpenClaw is called from the main process (Node.js) to avoid CORS restrictions in the renderer.
 // The session key pins the conversation to one OpenClaw session; without it the gateway opens a
@@ -39,6 +44,21 @@ let llmProvider: ReturnType<typeof createLLMProvider> | null = null
 const getLLMProvider = (): ReturnType<typeof createLLMProvider> =>
   (llmProvider ??= createLLMProvider())
 
+// Trusts ONLY the exact renderer entry this app loads (mirrors createWindow's load branch below),
+// not any http(s) origin or file: page in general.
+const isOwnRendererURL = (url: string): boolean => {
+  try {
+    if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
+      // Dev: renderer served over http(s); match the dev server's exact origin.
+      return new URL(url).origin === new URL(process.env['ELECTRON_RENDERER_URL']).origin
+    }
+    // Packaged: trust ONLY the exact renderer entry file, not any file: page.
+    return url === pathToFileURL(RENDERER_ENTRY_PATH).href
+  } catch {
+    return false
+  }
+}
+
 function createWindow(): void {
   // Create the browser window.
   const mainWindow = new BrowserWindow({
@@ -52,6 +72,51 @@ function createWindow(): void {
       sandbox: false
     }
   })
+
+  // Renderer getUserMedia for STT needs main to approve the 'media' permission. Scoped to
+  // audio-only, this exact main-window renderer, on its own entry URL: camera, any other
+  // webContents, non-main frames, and a navigated-away window are all denied.
+  mainWindow.webContents.session.setPermissionRequestHandler(
+    (webContents, permission, callback, details) => {
+      if (webContents !== mainWindow.webContents || permission !== 'media') {
+        callback(false)
+        return
+      }
+
+      const mediaTypes = 'mediaTypes' in details ? details.mediaTypes : undefined
+      const isAudioOnly =
+        Array.isArray(mediaTypes) && mediaTypes.length === 1 && mediaTypes[0] === 'audio'
+
+      callback(
+        isAudioOnly &&
+          details.isMainFrame === true &&
+          !!details.requestingUrl &&
+          isOwnRendererURL(details.requestingUrl)
+      )
+    }
+  )
+
+  // Electron consults this ahead of (and separately from) the request handler above, e.g. for
+  // navigator.permissions.query pre-checks, so it must enforce the same audio-only + own-renderer
+  // scope or it becomes a bypass of the request handler's restrictions.
+  mainWindow.webContents.session.setPermissionCheckHandler(
+    (webContents, permission, requestingOrigin, details) => {
+      if (webContents !== mainWindow.webContents || permission !== 'media') return false
+      if (details.mediaType !== 'audio' || details.isMainFrame !== true) return false
+      if (!requestingOrigin) return false
+
+      if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
+        try {
+          return requestingOrigin === new URL(process.env['ELECTRON_RENDERER_URL']).origin
+        } catch {
+          return false
+        }
+      }
+
+      // Packaged: a file: page's origin isn't distinguishing, so require the exact renderer entry.
+      return isOwnRendererURL(webContents.getURL())
+    }
+  )
 
   mainWindow.on('ready-to-show', () => {
     mainWindow.show()
@@ -67,7 +132,7 @@ function createWindow(): void {
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
     mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
   } else {
-    mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
+    mainWindow.loadFile(RENDERER_ENTRY_PATH)
   }
 }
 
