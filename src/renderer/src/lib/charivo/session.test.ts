@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
+  applySTTSettings,
   applyTTSSettings,
   getCharivoInstance,
   getMessagesSnapshot,
@@ -112,5 +113,19 @@ describe('applyTTSSettings', () => {
     expect(applyTTSSettings({ ...config, openaiApiKey: 'sk-dummy' })).toBe(true)
     // Leave the singleton detached so no later test can fire a real speech request.
     applyTTSSettings({ ...config, openaiApiKey: '' })
+  })
+})
+
+describe('applySTTSettings', () => {
+  const config: TTSConfig = { openaiApiKey: '', ttsModel: '', ttsVoice: '' }
+
+  it('returns false when no OpenAI API key is configured', () => {
+    expect(applySTTSettings({ ...config, openaiApiKey: '' })).toBe(false)
+  })
+
+  it('returns true when a key is provided', () => {
+    expect(applySTTSettings({ ...config, openaiApiKey: 'sk-dummy' })).toBe(true)
+    // Leave the singleton detached so no later test can fire a real transcription request.
+    applySTTSettings({ ...config, openaiApiKey: '' })
   })
 })

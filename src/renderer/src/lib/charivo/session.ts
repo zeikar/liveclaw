@@ -1,5 +1,7 @@
 import { Charivo, type LLMClient, type Message } from '@charivo/core'
 import { createLLMManager } from '@charivo/llm'
+import { createSTTManager } from '@charivo/stt'
+import { createOpenAISTTTranscriber } from '@charivo/stt/openai'
 import { createTTSManager } from '@charivo/tts'
 import { createOpenAITTSPlayer } from '@charivo/tts/openai'
 import { APP_CHARACTER } from '../../config/character'
@@ -35,6 +37,29 @@ export const applyTTSSettings = (config: TTSConfig): boolean => {
     dangerouslyAllowBrowser: true
   })
   charivo.attachTTS(createTTSManager(ttsPlayer))
+  return true
+}
+
+// Reuses the OpenAI key from the same TTS config. Synchronous on purpose, same reasoning as
+// applyTTSSettings above — and, once the composer's recording UI lands (a later task), a settings
+// save cannot occur mid-recording because the Settings chip is gated closed for the recording
+// lifecycle.
+export const applySTTSettings = (config: TTSConfig): boolean => {
+  charivo.detachSTT()
+
+  const apiKey = config.openaiApiKey.trim()
+  if (!apiKey) {
+    console.info('[STT] No OpenAI API key configured. STT is disabled.')
+    return false
+  }
+
+  const sttTranscriber = createOpenAISTTTranscriber({
+    apiKey,
+    defaultModel: 'whisper-1',
+    // The Electron renderer is a browser context; the key stays local to this desktop app.
+    dangerouslyAllowBrowser: true
+  })
+  charivo.attachSTT(createSTTManager(sttTranscriber))
   return true
 }
 

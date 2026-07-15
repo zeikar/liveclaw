@@ -1,9 +1,9 @@
 import { act, cleanup, renderHook, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { applyTTSSettings } from '../lib/charivo/session'
+import { applyTTSSettings, applySTTSettings } from '../lib/charivo/session'
 import { useSettings } from './useSettings'
 
-vi.mock('../lib/charivo/session', () => ({ applyTTSSettings: vi.fn() }))
+vi.mock('../lib/charivo/session', () => ({ applyTTSSettings: vi.fn(), applySTTSettings: vi.fn() }))
 
 const LOCAL_ORIGIN = 'http://127.0.0.1:18789'
 const LOCAL_BASE = 'http://127.0.0.1:18789/v1'
@@ -39,6 +39,7 @@ const getSettingsMock = vi.fn<Window['api']['getSettings']>()
 const getTTSConfigMock = vi.fn<Window['api']['getTTSConfig']>()
 const testConnectionMock = vi.fn<Window['api']['testConnection']>()
 const applyTTSSettingsMock = vi.mocked(applyTTSSettings)
+const applySTTSettingsMock = vi.mocked(applySTTSettings)
 
 beforeEach(() => {
   window.api = {
@@ -54,6 +55,7 @@ beforeEach(() => {
   getTTSConfigMock.mockReset()
   testConnectionMock.mockReset()
   applyTTSSettingsMock.mockReset()
+  applySTTSettingsMock.mockReset()
 })
 
 afterEach(cleanup)
@@ -69,6 +71,7 @@ describe('useSettings', () => {
     await waitFor(() => expect(result.current.isLoading).toBe(false))
     expect(result.current.needsSetup).toBe(false)
     expect(applyTTSSettingsMock).toHaveBeenCalledWith(TTS)
+    expect(applySTTSettingsMock).toHaveBeenCalledWith(TTS)
   })
 
   it('a detected token with a failing check needs setup and exposes the reason', async () => {

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { applyTTSSettings } from '../lib/charivo/session'
+import { applySTTSettings, applyTTSSettings } from '../lib/charivo/session'
 
 // Shown as the connection result when there is no OpenClaw token to check at all.
 const NO_TOKEN_RESULT: SettingsTestResult = { ok: false, message: 'No OpenClaw token found' }
@@ -30,10 +30,12 @@ export function useSettings(): UseSettingsResult {
       if (requestId !== latest.current) return
 
       const ttsConfig = await window.api.getTTSConfig()
-      // applyTTSSettings is a side effect on the Charivo singleton, not a state write, so it must be
-      // guarded like one: a superseded load must not detach and re-attach the TTS manager.
+      // applyTTSSettings/applySTTSettings are side effects on the Charivo singleton, not state
+      // writes, so they must be guarded like one: a superseded load must not detach and re-attach
+      // the TTS/STT managers.
       if (requestId !== latest.current) return
       applyTTSSettings(ttsConfig)
+      applySTTSettings(ttsConfig)
 
       let nextConnection = NO_TOKEN_RESULT
       if (next.openClawSource !== 'none') {
