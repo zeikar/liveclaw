@@ -17,7 +17,12 @@ Prebuilt installers for each release are on the [latest release page](https://gi
 - **Windows** - `-setup.exe`
 - **Linux** - `.AppImage`, `.deb`
 
-> macOS builds are not code-signed yet, so Gatekeeper may warn on first launch.
+> macOS builds are ad-hoc signed (not notarized), so Gatekeeper blocks them on first launch.
+> Open the app once via **right-click → Open**, or clear the quarantine flag:
+>
+> ```bash
+> xattr -dr com.apple.quarantine /Applications/liveclaw.app
+> ```
 
 ## Screenshot
 
