@@ -19,12 +19,14 @@ nsis:
   uninstallDisplayName: ${productName}
   createDesktopShortcut: always
 mac:
-  # Ad-hoc signed (no Apple Developer cert): keep hardened runtime off so library
-  # validation doesn't reject the Electron Framework at launch. Re-enable with a
-  # Developer ID cert + notarize if we move to the paid path.
+  # Ad-hoc signed (no Apple Developer cert): identity "-" seals the whole bundle so
+  # codesign validates and arm64 runs it (identity: null skips signing and leaves a
+  # broken seal). Hardened runtime stays off so library validation doesn't reject the
+  # Electron Framework. Downloaded builds still need a one-time quarantine bypass (see
+  # README); switch to a Developer ID cert + notarize for the paid path.
   hardenedRuntime: false
   gatekeeperAssess: false
-  identity: null
+  identity: '-'
   entitlementsInherit: build/entitlements.mac.plist
   extendInfo:
     - NSCameraUsageDescription: Application requests access to the device's camera.
