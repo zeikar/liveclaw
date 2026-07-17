@@ -1,10 +1,11 @@
 {
   "name": "liveclaw",
+  "productName": "LiveClaw",
   "version": "1.1.0",
-  "description": "An Electron application with React and TypeScript",
+  "description": "An Electron desktop AI companion — a Live2D character you chat with.",
   "main": "./out/main/index.js",
-  "author": "example.com",
-  "homepage": "https://electron-vite.org",
+  "author": "zeikar",
+  "homepage": "https://github.com/zeikar/liveclaw",
   "scripts": {
     "format": "prettier --write .",
     "lint": "eslint --cache .",

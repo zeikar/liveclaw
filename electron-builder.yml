@@ -1,5 +1,5 @@
-appId: com.electron.app
-productName: liveclaw
+appId: dev.zeikar.liveclaw
+productName: LiveClaw
 directories:
   buildResources: build
 files:
