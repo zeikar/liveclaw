@@ -1,7 +1,7 @@
 {
   "name": "liveclaw",
   "productName": "LiveClaw",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "An Electron desktop AI companion — a Live2D character you chat with.",
   "main": "./out/main/index.js",
   "author": "zeikar",
