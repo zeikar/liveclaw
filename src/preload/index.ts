@@ -1,5 +1,4 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import { electronAPI } from '@electron-toolkit/preload'
 
 // Expose custom APIs to the renderer via contextBridge
 const api = {
@@ -17,19 +16,18 @@ const api = {
     ipcRenderer.invoke('stt:bootstrapRealtime', request)
 }
 
-// Use `contextBridge` APIs to expose Electron APIs to
-// renderer only if context isolation is enabled, otherwise
-// just add to the DOM global.
+// Only the `api` object above is exposed. @electron-toolkit/preload's `electronAPI` is deliberately
+// NOT bridged: it carries a generic `ipcRenderer.invoke(channel, ...args)`, which would let any
+// document in this window call any main handler by name — including `tts:getConfig`, which returns
+// the standing OpenAI key in the clear. Authenticating individual channels cannot close that, since
+// the generic invoke bypasses this object entirely. Nothing in the renderer used it.
 if (process.contextIsolated) {
   try {
-    contextBridge.exposeInMainWorld('electron', electronAPI)
     contextBridge.exposeInMainWorld('api', api)
   } catch (error) {
     console.error(error)
   }
 } else {
-  // @ts-ignore (define in dts)
-  window.electron = electronAPI
   // @ts-ignore (define in dts)
   window.api = api
 }
