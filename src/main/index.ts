@@ -167,14 +167,22 @@ app.whenReady().then(() => {
 
   ipcMain.handle('settings:test', (_, raw: unknown) => testOpenClawConnection(raw))
 
-  ipcMain.handle('tts:getConfig', () => getTTSConfig())
+  // This hands the standing OpenAI key to the caller — TTS runs in the renderer and needs it (see
+  // the security note in README). That makes the sender check the whole boundary: the key goes to
+  // this app's own renderer main frame or nowhere.
+  ipcMain.handle('tts:getConfig', (event): TTSConfig => {
+    if (!isTrustedRendererSender(event)) {
+      throw new Error('TTS configuration is only available to the LiveClaw renderer.')
+    }
+    return getTTSConfig()
+  })
 
   // Realtime STT bootstraps here, not in the renderer, for two reasons: minting an ephemeral secret
   // is a billable call on the standing OpenAI key, so the sender is authenticated before the key is
   // read or any request goes out; and only the SDP answer, never that key, goes back on this path.
-  // The key does stay reachable through the unguarded tts:getConfig that TTS needs — the accepted
-  // local/dev-only posture, not something this channel improves on. A document that navigated off
-  // the renderer entry is refused here; a `will-navigate` guard would be a separate, broader change.
+  // TTS still takes the key into the renderer — the accepted local/dev-only posture — but both
+  // channels now gate on the same sender check. A document that navigated off the renderer entry is
+  // refused here; a `will-navigate` guard would be a separate, broader change.
   ipcMain.handle(
     'stt:bootstrapRealtime',
     async (event, payload: unknown): Promise<RealtimeSTTBootstrapResult> => {
