@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Live2DPanel } from './components/Live2DPanel'
 import { ChatComposer } from './components/chat/ChatComposer'
 import { MessageList } from './components/chat/MessageList'
@@ -24,9 +24,26 @@ function App(): React.JSX.Element {
     clearHistory,
     clearLocalHistory
   } = useCharivo()
-  const { isRecording, isStarting, isTranscribing, error: sttError, toggle } = useSTT()
   const [input, setInput] = useState('')
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  // Whether this recording has already written into the composer, which is what lets an empty final
+  // tell "drop the stale interim text" apart from "leave a typed-but-unsent message alone".
+  const partialsWroteInput = useRef(false)
+  const {
+    isRecording,
+    isStarting,
+    isTranscribing,
+    error: sttError,
+    toggle
+  } = useSTT({
+    // Snapshots are cumulative — each one is the full text so far — so they replace the input.
+    // While recording the mic owns the field: a snapshot landing after the user edits overwrites
+    // that edit.
+    onPartial: (transcription) => {
+      partialsWroteInput.current = true
+      setInput(transcription)
+    }
+  })
 
   const sttEnabled = view?.openaiApiKeySource !== 'none'
   const sttActive = isRecording || isStarting || isTranscribing
@@ -50,10 +67,18 @@ function App(): React.JSX.Element {
   }
 
   const handleToggleMic = async (): Promise<void> => {
+    // Guarded on sttActive so a toggle the hook drops as reentrant cannot clear the flag
+    // mid-session.
+    if (!sttActive) partialsWroteInput.current = false
     const transcript = await toggle()
-    if (!transcript) return
-    // Append, never replace or auto-send, so a partially-typed message survives.
-    setInput((prev) => (prev.trim() ? `${prev} ${transcript}` : transcript))
+    // Partials replace the input live, the final transcript then overwrites them as the
+    // authoritative text, and neither ever sends: pressing Send stays the user's move.
+    // Nothing to write: a start, a drop, or a failure the error surface reports.
+    if (transcript === null) return
+    // An empty final drops the interim text this recording wrote, but must not wipe a message the
+    // user typed before ever pressing the mic.
+    if (transcript === '' && !partialsWroteInput.current) return
+    setInput(transcript)
   }
 
   const handleSettingsSaved = (result: SettingsSaveResult): void => {
