@@ -65,7 +65,8 @@ beforeEach(() => {
     getSettings: vi.fn().mockResolvedValue(view()),
     saveSettings: vi.fn(),
     testConnection: vi.fn().mockResolvedValue({ ok: true, message: 'Connected to OpenClaw.' }),
-    getTTSConfig: vi.fn().mockResolvedValue(TTS)
+    getTTSConfig: vi.fn().mockResolvedValue(TTS),
+    bootstrapRealtimeSTT: vi.fn()
   }
   sttState.isRecording = false
   sttState.isStarting = false

@@ -21,7 +21,8 @@ describe('MarkdownContent', () => {
       getSettings: vi.fn(),
       saveSettings: vi.fn(),
       testConnection: vi.fn(),
-      getTTSConfig: vi.fn()
+      getTTSConfig: vi.fn(),
+      bootstrapRealtimeSTT: vi.fn()
     }
 
     render(<MarkdownContent content={'[docs](https://example.com)'} />)

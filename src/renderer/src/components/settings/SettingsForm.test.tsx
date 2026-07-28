@@ -42,7 +42,8 @@ beforeEach(() => {
     getSettings: vi.fn(),
     saveSettings: saveSettingsMock,
     testConnection: testConnectionMock,
-    getTTSConfig: vi.fn()
+    getTTSConfig: vi.fn(),
+    bootstrapRealtimeSTT: vi.fn()
   }
   saveSettingsMock.mockReset()
   testConnectionMock.mockReset()

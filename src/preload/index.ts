@@ -12,7 +12,9 @@ const api = {
   // An empty token means "use the implicit one, if it is bound to this origin".
   testConnection: (token: string, baseURL: string) =>
     ipcRenderer.invoke('settings:test', { token, baseURL }),
-  getTTSConfig: () => ipcRenderer.invoke('tts:getConfig')
+  getTTSConfig: () => ipcRenderer.invoke('tts:getConfig'),
+  bootstrapRealtimeSTT: (request: RealtimeSTTBootstrapRequest) =>
+    ipcRenderer.invoke('stt:bootstrapRealtime', request)
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

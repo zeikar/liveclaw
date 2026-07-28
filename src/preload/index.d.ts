@@ -11,6 +11,9 @@ declare global {
       saveSettings: (input: SettingsInput) => Promise<SettingsSaveResult>
       testConnection: (token: string, baseURL: string) => Promise<SettingsTestResult>
       getTTSConfig: () => Promise<TTSConfig>
+      bootstrapRealtimeSTT: (
+        request: RealtimeSTTBootstrapRequest
+      ) => Promise<RealtimeSTTBootstrapResult>
     }
   }
 }

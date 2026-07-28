@@ -26,7 +26,8 @@ beforeEach(() => {
     getSettings: vi.fn(),
     saveSettings: vi.fn(),
     testConnection: vi.fn(),
-    getTTSConfig: vi.fn()
+    getTTSConfig: vi.fn(),
+    bootstrapRealtimeSTT: vi.fn()
   }
 })
 

@@ -1,6 +1,5 @@
 import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
-import { pathToFileURL } from 'url'
 import { randomUUID } from 'crypto'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
@@ -15,10 +14,8 @@ import {
   saveSettings,
   testOpenClawConnection
 } from './settings'
-
-// Shared between isOwnRendererURL and createWindow's loadFile call below: the permission check
-// must track the exact renderer entry createWindow loads, or packaged STT silently breaks.
-const RENDERER_ENTRY_PATH = join(__dirname, '../renderer/index.html')
+import { bootstrapRealtimeTranscription } from './realtime-stt'
+import { RENDERER_ENTRY_PATH, isOwnRendererURL, isTrustedRendererSender } from './renderer-trust'
 
 // OpenClaw is called from the main process (Node.js) to avoid CORS restrictions in the renderer.
 // The session key pins the conversation to one OpenClaw session; without it the gateway opens a
@@ -43,21 +40,6 @@ const createLLMProvider = (): ReturnType<typeof createOpenClawLLMProvider> => {
 let llmProvider: ReturnType<typeof createLLMProvider> | null = null
 const getLLMProvider = (): ReturnType<typeof createLLMProvider> =>
   (llmProvider ??= createLLMProvider())
-
-// Trusts ONLY the exact renderer entry this app loads (mirrors createWindow's load branch below),
-// not any http(s) origin or file: page in general.
-const isOwnRendererURL = (url: string): boolean => {
-  try {
-    if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
-      // Dev: renderer served over http(s); match the dev server's exact origin.
-      return new URL(url).origin === new URL(process.env['ELECTRON_RENDERER_URL']).origin
-    }
-    // Packaged: trust ONLY the exact renderer entry file, not any file: page.
-    return url === pathToFileURL(RENDERER_ENTRY_PATH).href
-  } catch {
-    return false
-  }
-}
 
 function createWindow(): void {
   // Create the browser window.
@@ -186,6 +168,22 @@ app.whenReady().then(() => {
   ipcMain.handle('settings:test', (_, raw: unknown) => testOpenClawConnection(raw))
 
   ipcMain.handle('tts:getConfig', () => getTTSConfig())
+
+  // Realtime STT bootstraps here, not in the renderer, for two reasons: minting an ephemeral secret
+  // is a billable call on the standing OpenAI key, so the sender is authenticated before the key is
+  // read or any request goes out; and only the SDP answer, never that key, goes back on this path.
+  // The key does stay reachable through the unguarded tts:getConfig that TTS needs — the accepted
+  // local/dev-only posture, not something this channel improves on. A document that navigated off
+  // the renderer entry is refused here; a `will-navigate` guard would be a separate, broader change.
+  ipcMain.handle(
+    'stt:bootstrapRealtime',
+    async (event, payload: unknown): Promise<RealtimeSTTBootstrapResult> => {
+      if (!isTrustedRendererSender(event)) {
+        throw new Error('Realtime transcription is only available to the LiveClaw renderer.')
+      }
+      return await bootstrapRealtimeTranscription(getTTSConfig().openaiApiKey, payload)
+    }
+  )
 
   ipcMain.handle('app:openExternal', async (_, rawUrl: string) => {
     const url = rawUrl?.trim()
