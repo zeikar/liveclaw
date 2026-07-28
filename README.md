@@ -37,7 +37,7 @@ Prebuilt installers for each release are on the [latest release page](https://gi
 - **Charivo** (`@charivo/core`, `@charivo/llm`, `@charivo/tts`, `@charivo/stt`) - Character session orchestration (LLM/TTS/STT/Renderer)
 - **[OpenClaw](https://openclaw.ai/)** (`@charivo/server/openclaw`) - Local LLM backend for chat
 - **OpenAI TTS** (`@charivo/tts/openai`) - Direct renderer-side speech synthesis for local use
-- **OpenAI STT** (`@charivo/stt/openai`) - Direct renderer-side speech-to-text (OpenAI Whisper) for local use
+- **OpenAI STT** (`@charivo/stt/openai-realtime`) - Realtime voice input: WebRTC audio streaming from the renderer, bootstrapped (ephemeral secret + SDP exchange) via the main process
 
 ## Architecture
 
@@ -63,15 +63,34 @@ Prebuilt installers for each release are on the [latest release page](https://gi
 ```txt
 [Renderer - React]
   @charivo/tts/openai (speech synthesis)
-  @charivo/stt/openai (voice input / Whisper)
        |
        | HTTPS
        v
 [OpenAI Audio API]
 ```
 
+```txt
+[Renderer - React]
+  @charivo/stt/openai-realtime (voice input)
+       |                                |
+       | IPC                            | WebRTC
+       | (bootstrapRealtimeSTT)         | (audio + live transcript)
+       v                                |
+[Main Process - Node.js]                |
+  stt:bootstrapRealtime                 |
+  (mint ephemeral secret,               |
+   then exchange SDP)                   |
+       |                                |
+       | HTTPS                          |
+       v                                v
+[OpenAI Realtime API]
+```
+
 OpenClaw API calls are handled in the Electron **main process (Node.js)** to avoid renderer CORS/PNA limits.
-TTS and STT (voice input) are intentionally direct from the renderer for local development convenience.
+TTS is intentionally direct from the renderer for local development convenience. Voice input (STT)
+also opens its WebRTC session — audio and live transcript — directly from the renderer, using the SDP
+answer main hands back; but the bootstrap that produces that answer, minting an ephemeral secret and
+exchanging the SDP offer, runs in the main process behind an authenticated IPC call.
 
 ## Live2D Integration
 
@@ -155,7 +174,7 @@ OpenAI key** — a key supplied through `.env` in development is disabled by edi
 app cannot remove what it does not store. Deleting `config.json` resets everything back to
 auto-detected/`.env` defaults.
 
-### 3. Direct OpenAI TTS and voice input (STT)
+### 3. OpenAI TTS and voice input (STT)
 
 Set your OpenAI API key from the in-app settings screen, or via `.env` in development (see below).
 
@@ -166,12 +185,14 @@ Supported voices: `alloy`, `echo`, `fable`, `marin`, `onyx`, `nova`, `shimmer`
 If no OpenAI key is configured, TTS is disabled and chat still works.
 
 The same key also enables voice input: a mic button appears in the composer (hidden when no key is
-set). Press it to record, press again to stop - the Whisper transcript is appended to the composer
-input for you to review or edit, and is not sent automatically.
+set). Press it to start recording; the transcription streams live into the composer input as you
+speak, replacing the field with each update rather than appending to it. Press the mic again to stop.
+Sending is still manual — nothing is sent automatically.
 
-STT transcription uses `whisper-1`; the models and voices above are TTS-only (there is no separate STT
-model setting). The first recording may prompt for OS microphone access — LiveClaw's main process
-grants only audio requests from its own renderer window.
+Voice input uses the realtime transcription model the transcriber pins internally; the models and
+voices above are TTS-only (there is no separate STT model setting). The first recording may prompt for
+OS microphone access — LiveClaw's main process grants only audio requests from its own renderer
+window.
 
 ### 4. Character profile
 
@@ -192,7 +213,8 @@ packaging config regardless — keeping secrets out of a built app is still the 
 OPENCLAW_TOKEN=your_openclaw_token
 OPENCLAW_BASE_URL=http://127.0.0.1:18789/v1
 
-# Direct OpenAI TTS and STT (the key is shared; the model/voice below are TTS-only)
+# OpenAI key: used directly by the renderer for TTS, and by the main process to bootstrap voice
+# input (STT) sessions; the model/voice below are TTS-only
 OPENAI_API_KEY=your_openai_api_key
 OPENAI_TTS_MODEL=gpt-4o-mini-tts
 OPENAI_TTS_VOICE=marin
@@ -203,8 +225,10 @@ directory, useful for testing setup/auto-detection without touching your real `c
 
 ## Security Note
 
-Direct renderer-side OpenAI usage (TTS and voice input/STT) exposes the API key to the local client
-runtime. Use this setup only for trusted local/dev environments.
+Direct renderer-side OpenAI usage (TTS) exposes the API key to the local client runtime. Use this
+setup only for trusted local/dev environments. Voice input (STT) keeps the standing key, and the
+ephemeral secret minted from it, in the main process — the renderer only ever receives the SDP answer
+needed to complete its own WebRTC session with OpenAI.
 
 The OpenClaw gateway token is an **operator-grade credential**, not a scoped API key — keep it local.
 An auto-detected token is never duplicated onto disk; a token you type into the setup screen is

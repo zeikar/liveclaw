@@ -52,12 +52,19 @@ Chat and speech reach their providers by different routes, and that asymmetry is
   The OpenAI key reaches the renderer through the `tts:getConfig` IPC at runtime rather than
   `import.meta.env`, so no key is baked into the bundle — but it's still live in renderer memory, and
   this is accepted for local/dev use only.
-- **STT mirrors TTS**, also called directly from the renderer (`@charivo/stt/openai`,
-  `dangerouslyAllowBrowser`) and reusing the same OpenAI key delivered by `tts:getConfig` — there is
-  no separate settings field or IPC for it — so it carries the same live-in-renderer-memory,
-  local/dev-only caveat. `src/main/index.ts` grants the microphone itself, via
-  `setPermissionRequestHandler`/`setPermissionCheckHandler` scoped to audio-only requests from the
-  app's own renderer.
+- **STT no longer mirrors TTS.** The WebRTC media/data session to OpenAI's realtime API still runs
+  from the renderer (`createOpenAIRealtimeSTTTranscriber` from `@charivo/stt/openai-realtime`), but
+  the two HTTP hops move to the main process: mint an ephemeral client secret using the standing key,
+  then spend that secret — not the standing key — trading the renderer's SDP offer for an answer.
+  Both live in `src/main/realtime-stt.ts` (`bootstrapRealtimeTranscription`), exposed to the renderer
+  as `stt:bootstrapRealtime` / `window.api.bootstrapRealtimeSTT`. Neither the standing OpenAI key nor
+  the ephemeral secret minted from it ever reaches the renderer on this path — only the negotiated SDP
+  answer comes back. (TTS above is unaffected.) The mic permission handlers in `src/main/index.ts`
+  (`setPermissionRequestHandler`/`setPermissionCheckHandler`) still grant only audio-only, main-frame
+  requests from this app's own renderer window. They and `stt:bootstrapRealtime`'s sender check now
+  share that boundary, `isOwnRendererURL` (`src/main/renderer-trust.ts`), instead of each defining it
+  separately — loosen one and you loosen the other. Provider/transcriber changes still belong upstream
+  in `charivo`, not patched around here.
 
 ### The renderer's Charivo session
 
@@ -91,6 +98,21 @@ it explains why each of these holds. Do not break them:
 
 Provider changes (session handling, agent routing, model target) belong upstream in the `charivo`
 repo's `packages/server/src/openclaw/`, not patched around here.
+
+### Realtime STT (the part that bites)
+
+- `stt:bootstrapRealtime` authenticates its sender with `isTrustedRendererSender`
+  (`src/main/renderer-trust.ts`) **before** it reads the OpenAI key or sends anything upstream —
+  minting an ephemeral client secret is a billable call, so an unauthenticated or navigated-away
+  sender must never reach it.
+- `useSTT` (`src/renderer/src/hooks/useSTT.ts`) branches Start/Stop on its own `sessionOpen` ref, not
+  the STT manager's `isRecording()`. A streaming session that fails mid-recording reports
+  `isRecording() === false` while still holding its terminal error, and only `stop()` rethrows it —
+  branching on the manager's own flag would silently retake the Start arm on the user's Stop press.
+- The bootstrap's own deadline (`BOOTSTRAP_DEADLINE_MS`, 12s) must stay shorter than the
+  transcriber's own bootstrap timeout (`BOOTSTRAP_TIMEOUT_MS` in `@charivo/stt/openai-realtime`,
+  15s) — main has to give up first, or a slow upstream call can outlive the transcriber's cleanup
+  and leave an orphaned, billable session running.
 
 ## Testing
 
