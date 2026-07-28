@@ -1,7 +1,7 @@
 import { Charivo, type LLMClient, type Message } from '@charivo/core'
 import { createLLMManager } from '@charivo/llm'
 import { createSTTManager } from '@charivo/stt'
-import { createOpenAISTTTranscriber } from '@charivo/stt/openai'
+import { createOpenAIRealtimeSTTTranscriber } from '@charivo/stt/openai-realtime'
 import { createTTSManager } from '@charivo/tts'
 import { createOpenAITTSPlayer } from '@charivo/tts/openai'
 import { APP_CHARACTER } from '../../config/character'
@@ -40,10 +40,12 @@ export const applyTTSSettings = (config: TTSConfig): boolean => {
   return true
 }
 
-// Reuses the OpenAI key from the same TTS config. Synchronous on purpose, same reasoning as
-// applyTTSSettings above — and, once the composer's recording UI lands (a later task), a settings
-// save cannot occur mid-recording because the Settings chip is gated closed for the recording
-// lifecycle.
+// The OpenAI key itself never reaches the transcriber: the realtime session is minted by the main
+// process via window.api.bootstrapRealtimeSTT, which holds the key. This check only gates on
+// whether the main process has a key to mint with — same observable gating as before, just no key
+// handoff. Synchronous on purpose, same reasoning as applyTTSSettings above — and, once the
+// composer's recording UI lands (a later task), a settings save cannot occur mid-recording because
+// the Settings chip is gated closed for the recording lifecycle.
 export const applySTTSettings = (config: TTSConfig): boolean => {
   charivo.detachSTT()
 
@@ -53,11 +55,8 @@ export const applySTTSettings = (config: TTSConfig): boolean => {
     return false
   }
 
-  const sttTranscriber = createOpenAISTTTranscriber({
-    apiKey,
-    defaultModel: 'whisper-1',
-    // The Electron renderer is a browser context; the key stays local to this desktop app.
-    dangerouslyAllowBrowser: true
+  const sttTranscriber = createOpenAIRealtimeSTTTranscriber({
+    bootstrap: (request) => window.api.bootstrapRealtimeSTT(request)
   })
   charivo.attachSTT(createSTTManager(sttTranscriber))
   return true

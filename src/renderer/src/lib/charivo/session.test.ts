@@ -1,4 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+const { createOpenAIRealtimeSTTTranscriberMock } = vi.hoisted(() => ({
+  createOpenAIRealtimeSTTTranscriberMock: vi.fn((config: unknown) => config)
+}))
+
+vi.mock('@charivo/stt/openai-realtime', () => ({
+  createOpenAIRealtimeSTTTranscriber: createOpenAIRealtimeSTTTranscriberMock
+}))
+
 import {
   applySTTSettings,
   applyTTSSettings,
@@ -126,7 +135,30 @@ describe('applySTTSettings', () => {
 
   it('returns true when a key is provided', () => {
     expect(applySTTSettings({ ...config, openaiApiKey: 'sk-dummy' })).toBe(true)
-    // Leave the singleton detached so no later test can fire a real transcription request.
+    // Leave the singleton detached so no later test can start a real streaming session.
+    applySTTSettings({ ...config, openaiApiKey: '' })
+  })
+
+  it('wires bootstrap to forward the request to window.api.bootstrapRealtimeSTT and return its result', async () => {
+    const bootstrapResult: RealtimeSTTBootstrapResult = { answerSdp: 'answer-sdp' }
+    const bootstrapMock = vi.mocked(window.api.bootstrapRealtimeSTT)
+    bootstrapMock.mockResolvedValue(bootstrapResult)
+
+    applySTTSettings({ ...config, openaiApiKey: 'sk-dummy' })
+
+    const transcriberConfig = createOpenAIRealtimeSTTTranscriberMock.mock.calls.at(-1)?.[0] as {
+      bootstrap: (request: RealtimeSTTBootstrapRequest) => Promise<RealtimeSTTBootstrapResult>
+    }
+    const sampleRequest: RealtimeSTTBootstrapRequest = {
+      sdpOffer: 'offer-sdp',
+      session: { model: 'gpt-realtime-whisper' }
+    }
+
+    await expect(transcriberConfig.bootstrap(sampleRequest)).resolves.toBe(bootstrapResult)
+    expect(bootstrapMock).toHaveBeenCalledWith(sampleRequest)
+    expect(bootstrapMock.mock.calls[0][0]).toBe(sampleRequest)
+
+    // Leave the singleton detached so no later test can start a real streaming session.
     applySTTSettings({ ...config, openaiApiKey: '' })
   })
 })
