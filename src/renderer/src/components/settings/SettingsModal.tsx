@@ -43,6 +43,9 @@ export function SettingsModal({
       <div
         ref={panelRef}
         tabIndex={-1}
+        role="dialog"
+        aria-modal="true"
+        aria-label="LiveClaw settings"
         className="w-full max-w-lg outline-none"
         onClick={(e) => e.stopPropagation()}
       >

@@ -49,6 +49,15 @@ beforeEach(() => {
 afterEach(cleanup)
 
 describe('SettingsModal', () => {
+  it('exposes the panel as a modal dialog, not an anonymous div', () => {
+    render(<SettingsModal view={view} connection={null} onClose={vi.fn()} onSaved={vi.fn()} />)
+    const dialog = screen.getByRole('dialog')
+
+    expect(dialog.getAttribute('aria-modal')).toBe('true')
+    // Focus moves into the panel on mount, which is only meaningful if the panel names itself.
+    expect(document.activeElement).toBe(dialog)
+  })
+
   it('Escape closes the modal when no save is in flight', () => {
     const onClose = vi.fn()
     render(<SettingsModal view={view} connection={null} onClose={onClose} onSaved={vi.fn()} />)
