@@ -89,6 +89,11 @@ describe('MessageList', () => {
     )
 
     // Only the user column gained a message; the character column must not scroll along with it.
+    // `scrollTo` is one shared prototype mock, so the instance it was called on names the column —
+    // a call count alone would not tell the two apart.
     expect(scrollTo).toHaveBeenCalledTimes(1)
+    const scrolled = scrollTo.mock.instances[0] as HTMLElement
+    expect(scrolled.contains(screen.getByText('hi'))).toBe(true)
+    expect(scrolled.contains(screen.getByText('hello'))).toBe(false)
   })
 })
