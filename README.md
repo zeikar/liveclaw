@@ -129,11 +129,17 @@ curl http://127.0.0.1:18789/v1/models \
 
 If OpenClaw is installed and its gateway is reachable, **there is nothing else to configure.**
 LiveClaw reads `gateway.auth.token` and `gateway.port` straight out of `~/.openclaw/openclaw.json`
-(or `$OPENCLAW_CONFIG_PATH`) at runtime, checks them with `GET /v1/models`, and starts chatting. No
-token pasting. An auto-detected token is **never written to LiveClaw's own config**, so rotating it
-inside OpenClaw is picked up automatically the next time LiveClaw launches. The app also reads the
+at runtime, checks them with `GET /v1/models`, and starts chatting. No token pasting. An
+auto-detected token is **never written to LiveClaw's own config**, so rotating it inside OpenClaw is
+picked up automatically the next time LiveClaw launches. The app also reads the
 `gateway.http.endpoints.chatCompletions.enabled` flag from that same file (absent means disabled)
 and shows the fix above in-app if it looks off.
+
+`$OPENCLAW_CONFIG_PATH` redirects that lookup **in development only**. A packaged build always reads
+the home-directory path, resolved from your OS account rather than `$HOME`: the file it names hands
+over a gateway token and the origin that token is sent to, which is the same power as the
+`OPENCLAW_TOKEN` a packaged build already refuses. If your config lives elsewhere, enter the gateway
+URL and token once in the app's setup screen.
 
 If auto-detection doesn't apply — `gateway.auth.mode` is `password`, the token is a secretRef or a
 `${OPENCLAW_GATEWAY_TOKEN}`-style interpolation, the config file isn't readable, or the detected local
