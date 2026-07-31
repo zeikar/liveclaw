@@ -34,7 +34,10 @@ const createLLMProvider = (): ReturnType<typeof createOpenClawLLMProvider> => {
   return createOpenClawLLMProvider({
     token,
     baseURL,
-    sessionKey: `liveclaw:${randomUUID()}`
+    sessionKey: `liveclaw:${randomUUID()}`,
+    // The provider's own default is 1000, which cuts a longer reply off mid-sentence. Reply length
+    // is the character prompt's job; this is only the ceiling that stops a truncated one.
+    maxTokens: 4000
   })
 }
 
