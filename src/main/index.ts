@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow, ipcMain } from 'electron'
+import { app, shell, BrowserWindow } from 'electron'
 import { join } from 'path'
 import { randomUUID } from 'crypto'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
@@ -15,7 +15,8 @@ import {
   testOpenClawConnection
 } from './settings'
 import { bootstrapRealtimeTranscription } from './realtime-stt'
-import { RENDERER_ENTRY_PATH, isOwnRendererURL, isTrustedRendererSender } from './renderer-trust'
+import { RENDERER_ENTRY_PATH, handleTrusted, isOwnRendererURL } from './renderer-trust'
+import { toExternalURL } from './external-url'
 
 // OpenClaw is called from the main process (Node.js) to avoid CORS restrictions in the renderer.
 // The session key pins the conversation to one OpenClaw session; without it the gateway opens a
@@ -105,8 +106,22 @@ function createWindow(): void {
   })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
-    shell.openExternal(details.url)
+    // Same validation as the app:openExternal IPC: a middle-clicked markdown link arrives here
+    // rather than through the renderer's own handler, and must not be a wider door than that one.
+    const url = toExternalURL(details.url)
+    if (url) void shell.openExternal(url)
     return { action: 'deny' }
+  })
+
+  // The preload `api` belongs to whatever document the window ends up holding, so a top frame that
+  // navigated away would keep every IPC channel. Nothing in this app navigates anywhere but its own
+  // entry — links open in the browser instead — so everything else is refused here. This is what the
+  // per-channel sender checks are the second line of defence for.
+  mainWindow.webContents.on('will-frame-navigate', (details) => {
+    if (!isOwnRendererURL(details.url)) {
+      console.warn('[navigation] refused a navigation away from the renderer entry:', details.url)
+      details.preventDefault()
+    }
   })
 
   // HMR for renderer base on electron-vite cli.
@@ -140,24 +155,25 @@ app.whenReady().then(() => {
     optimizer.watchWindowShortcuts(window)
   })
 
-  // IPC test
-  ipcMain.on('ping', () => console.log('pong'))
+  // Every channel below is registered through handleTrusted, so each one authenticates its sender
+  // before doing anything: the operator-grade gateway behind llm:chat and the gateway settings
+  // behind settings:save are worth the same check as the key behind tts:getConfig.
 
-  // IPC handler: renderer sends messages, main process calls OpenClaw (no CORS in Node.js)
-  ipcMain.handle('llm:chat', async (_, messages: Array<{ role: string; content: string }>) => {
+  // Renderer sends messages, main process calls OpenClaw (no CORS in Node.js).
+  handleTrusted('llm:chat', async (_, messages: Array<{ role: string; content: string }>) => {
     return await getLLMProvider().generateResponse(messages)
   })
 
   // Clearing the chat has to rotate the session key too, otherwise OpenClaw keeps replying
   // from the transcript the user just cleared. Deferred: the next chat call constructs the
   // replacement provider.
-  ipcMain.handle('llm:newConversation', () => {
+  handleTrusted('llm:newConversation', () => {
     llmProvider = null
   })
 
-  ipcMain.handle('settings:get', () => getSettingsView())
+  handleTrusted('settings:get', () => getSettingsView())
 
-  ipcMain.handle('settings:save', (_, raw: unknown) => {
+  handleTrusted('settings:save', (_, raw: unknown) => {
     const result = saveSettings(raw)
     // Third session-key rotation point: an OpenClaw token/baseURL change must not keep talking to
     // the old (or a now-stale) session, so drop the provider and let the next chat rebuild it.
@@ -165,50 +181,27 @@ app.whenReady().then(() => {
     return result
   })
 
-  ipcMain.handle('settings:test', (_, raw: unknown) => testOpenClawConnection(raw))
+  handleTrusted('settings:test', (_, raw: unknown) => testOpenClawConnection(raw))
 
   // This hands the standing OpenAI key to the caller — TTS runs in the renderer and needs it (see
   // the security note in README). That makes the sender check the whole boundary: the key goes to
   // this app's own renderer main frame or nowhere.
-  ipcMain.handle('tts:getConfig', (event): TTSConfig => {
-    if (!isTrustedRendererSender(event)) {
-      throw new Error('TTS configuration is only available to the LiveClaw renderer.')
-    }
-    return getTTSConfig()
-  })
+  handleTrusted('tts:getConfig', (): TTSConfig => getTTSConfig())
 
   // Realtime STT bootstraps here, not in the renderer, for two reasons: minting an ephemeral secret
   // is a billable call on the standing OpenAI key, so the sender is authenticated before the key is
   // read or any request goes out; and only the SDP answer, never that key, goes back on this path.
-  // TTS still takes the key into the renderer — the accepted local/dev-only posture — but both
-  // channels now gate on the same sender check. A document that navigated off the renderer entry is
-  // refused here; a `will-navigate` guard would be a separate, broader change.
-  ipcMain.handle(
+  // TTS still takes the key into the renderer — the accepted local/dev-only posture.
+  handleTrusted(
     'stt:bootstrapRealtime',
-    async (event, payload: unknown): Promise<RealtimeSTTBootstrapResult> => {
-      if (!isTrustedRendererSender(event)) {
-        throw new Error('Realtime transcription is only available to the LiveClaw renderer.')
-      }
-      return await bootstrapRealtimeTranscription(getTTSConfig().openaiApiKey, payload)
-    }
+    async (_, payload: unknown): Promise<RealtimeSTTBootstrapResult> =>
+      await bootstrapRealtimeTranscription(getTTSConfig().openaiApiKey, payload)
   )
 
-  ipcMain.handle('app:openExternal', async (_, rawUrl: string) => {
-    const url = rawUrl?.trim()
+  handleTrusted('app:openExternal', async (_, rawUrl: unknown) => {
+    const url = toExternalURL(rawUrl)
     if (!url) return
-
-    let parsed: URL
-    try {
-      parsed = new URL(url)
-    } catch {
-      return
-    }
-
-    if (!['http:', 'https:', 'mailto:'].includes(parsed.protocol)) {
-      return
-    }
-
-    await shell.openExternal(parsed.toString())
+    await shell.openExternal(url)
   })
 
   createWindow()

@@ -1,8 +1,8 @@
-// The one place that decides what counts as "this app's own renderer" URL: the mic permission
-// handlers and the privileged STT IPC must agree on that boundary, so they share these checks rather
-// than each inventing one.
+// The one place that decides what counts as "this app's own renderer": the mic permission handlers,
+// the navigation guard, and every IPC channel must agree on that boundary, so they share these
+// checks rather than each inventing one.
 
-import { BrowserWindow } from 'electron'
+import { BrowserWindow, ipcMain } from 'electron'
 import type { IpcMainInvokeEvent } from 'electron'
 import { join } from 'path'
 import { pathToFileURL } from 'url'
@@ -40,4 +40,26 @@ export const isTrustedRendererSender = (event: IpcMainInvokeEvent): boolean => {
   // BrowserWindow, where the permission handlers pin mainWindow.webContents — equivalent today,
   // since createWindow is the only construction site and setWindowOpenHandler denies every open.
   return BrowserWindow.fromWebContents(event.sender) !== null
+}
+
+/**
+ * Registers an IPC handler that only this app's own renderer may call. Every channel goes through
+ * here rather than only the ones that hand out a secret: the preload `api` is exposed to whatever
+ * document the window holds, so `llm:chat` (operator-grade gateway access) and `settings:save`
+ * (which gateway the app talks to) need the same sender check as `tts:getConfig`. The navigation
+ * guard in index.ts is what makes a foreign document unlikely in the first place; this is the
+ * second line.
+ */
+export const handleTrusted = <A extends unknown[], R>(
+  channel: string,
+  handler: (event: IpcMainInvokeEvent, ...args: A) => R
+): void => {
+  ipcMain.handle(channel, (event, ...args) => {
+    if (!isTrustedRendererSender(event)) {
+      throw new Error(`${channel} is only available to the LiveClaw renderer.`)
+    }
+    // Electron types IPC arguments as `any[]`; this cast is the same unchecked hand-off the raw
+    // ipcMain.handle call sites already made, just centralised.
+    return handler(event, ...(args as A))
+  })
 }

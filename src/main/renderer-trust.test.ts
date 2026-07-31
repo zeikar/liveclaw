@@ -3,12 +3,21 @@ import { pathToFileURL } from 'url'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { IpcMainInvokeEvent } from 'electron'
 
-const h = vi.hoisted(() => ({ isDev: false }))
+const h = vi.hoisted(() => ({
+  isDev: false,
+  // Captures what handleTrusted registers, so a test can invoke the channel the way Electron would.
+  handlers: new Map<string, (event: unknown, ...args: unknown[]) => unknown>()
+}))
 
 vi.mock('electron', () => ({
   BrowserWindow: {
     // Fake webContents opt in to being window-owned; anything else stands in for a child view.
     fromWebContents: (contents: { ownedByWindow?: boolean }) => (contents.ownedByWindow ? {} : null)
+  },
+  ipcMain: {
+    handle: (channel: string, handler: (event: unknown, ...args: unknown[]) => unknown) => {
+      h.handlers.set(channel, handler)
+    }
   }
 }))
 
@@ -20,7 +29,7 @@ vi.mock('@electron-toolkit/utils', () => ({
   }
 }))
 
-import { RENDERER_ENTRY_PATH, isTrustedRendererSender } from './renderer-trust'
+import { RENDERER_ENTRY_PATH, handleTrusted, isTrustedRendererSender } from './renderer-trust'
 
 const DEV_URL = 'http://localhost:5173'
 
@@ -92,5 +101,45 @@ describe('the sender itself', () => {
 
   it('rejects webContents that no BrowserWindow owns', () => {
     expect(isTrustedRendererSender(event(mainFrame(entryURL), false))).toBe(false)
+  })
+})
+
+describe('handleTrusted', () => {
+  const entryURL = pathToFileURL(RENDERER_ENTRY_PATH).href
+  const invoke = (channel: string, sender: IpcMainInvokeEvent, ...args: unknown[]): unknown =>
+    h.handlers.get(channel)!(sender, ...args)
+
+  beforeEach(() => {
+    h.handlers.clear()
+  })
+
+  it('forwards the arguments and the return value for the app’s own renderer', async () => {
+    const handler = vi.fn(async (_event: IpcMainInvokeEvent, a: number, b: number) => a + b)
+    handleTrusted('math:add', handler)
+
+    await expect(invoke('math:add', event(mainFrame(entryURL)), 2, 3)).resolves.toBe(5)
+    expect(handler).toHaveBeenCalledTimes(1)
+  })
+
+  // The whole point: the handler body must not run at all, so a channel that spends money or hands
+  // out a credential never gets that far.
+  it('throws without running the handler for an untrusted sender', () => {
+    const handler = vi.fn()
+    handleTrusted('tts:getConfig', handler)
+
+    expect(() =>
+      invoke('tts:getConfig', event(mainFrame('http://evil.example/index.html')))
+    ).toThrow(/tts:getConfig is only available to the LiveClaw renderer/)
+    expect(handler).not.toHaveBeenCalled()
+  })
+
+  it('refuses a subframe and a destroyed frame the same way', () => {
+    const handler = vi.fn()
+    handleTrusted('llm:chat', handler)
+    const subframe: FakeFrame = { url: entryURL, parent: mainFrame(entryURL) }
+
+    expect(() => invoke('llm:chat', event(subframe))).toThrow()
+    expect(() => invoke('llm:chat', event(null))).toThrow()
+    expect(handler).not.toHaveBeenCalled()
   })
 })
