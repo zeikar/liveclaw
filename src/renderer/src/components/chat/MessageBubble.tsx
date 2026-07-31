@@ -4,17 +4,15 @@ type MessageBubbleProps = {
   content: string
   isUser: boolean
   isTyping?: boolean
-  autoFade?: boolean
 }
 
 export function MessageBubble({
   content,
   isUser,
-  isTyping = false,
-  autoFade = false
+  isTyping = false
 }: MessageBubbleProps): React.JSX.Element {
   return (
-    <div className={`flex w-full flex-col items-end gap-1 ${autoFade ? 'bubble-fade-out' : ''}`}>
+    <div className="flex w-full flex-col items-end gap-1">
       <div className="max-w-full">
         <div
           className={`rounded-tl-2xl rounded-tr-2xl rounded-bl-2xl rounded-br-none px-4 py-3 text-sm shadow-lg ${
