@@ -6,10 +6,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 // The env-path gate falls back to ~/.openclaw/openclaw.json, so a fake home keeps these cases off
 // the developer's real config — a failed assertion would otherwise print their gateway token.
 const h = vi.hoisted(() => ({ home: '' }))
-vi.mock('os', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('os')>()),
-  homedir: () => h.home
-}))
+vi.mock('os', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('os')>()
+  return {
+    ...actual,
+    homedir: () => h.home,
+    userInfo: () => ({ ...actual.userInfo(), homedir: h.home })
+  }
+})
 
 import { detectOpenClaw, openClawConfigPath } from './openclaw-config'
 

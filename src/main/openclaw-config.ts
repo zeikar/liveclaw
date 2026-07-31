@@ -5,7 +5,7 @@
 // last started. Never throw here — a bad or missing OpenClaw config just means "fall back to
 // manual configuration".
 import { readFileSync } from 'fs'
-import { homedir } from 'os'
+import { homedir, userInfo } from 'os'
 import { join } from 'path'
 import JSON5 from 'json5'
 
@@ -24,6 +24,18 @@ export interface OpenClawDetection {
   error: string | null
 }
 
+// `os.homedir()` consults $HOME (POSIX) / %USERPROFILE% (Windows) before asking the OS, so it would
+// leave the environment a second way to choose which config is trusted — walking straight around the
+// gate below. userInfo() reads the account database instead. It can throw when the uid has no passwd
+// entry, and this module must never throw, so homedir() remains the fallback for that case only.
+const homeDirectory = (): string => {
+  try {
+    return userInfo().homedir || homedir()
+  } catch {
+    return homedir()
+  }
+}
+
 /**
  * `allowEnvPath` is the packaging gate. OPENCLAW_CONFIG_PATH points detection at an arbitrary file,
  * and that file supplies both a token and the origin the token is sent to — so it is exactly as
@@ -32,7 +44,7 @@ export interface OpenClawDetection {
  */
 export function openClawConfigPath(allowEnvPath = true): string {
   const envPath = allowEnvPath ? process.env.OPENCLAW_CONFIG_PATH?.trim() : ''
-  return envPath || join(homedir(), '.openclaw', 'openclaw.json')
+  return envPath || join(homeDirectory(), '.openclaw', 'openclaw.json')
 }
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {

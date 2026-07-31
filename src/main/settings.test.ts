@@ -16,10 +16,14 @@ vi.mock('electron', () => ({
 // A packaged build ignores OPENCLAW_CONFIG_PATH and falls back to ~/.openclaw/openclaw.json, so
 // without this the packaged cases below would read the developer's real config — and their real
 // gateway token — making the suite machine-dependent.
-vi.mock('os', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('os')>()),
-  homedir: () => h.home
-}))
+vi.mock('os', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('os')>()
+  return {
+    ...actual,
+    homedir: () => h.home,
+    userInfo: () => ({ ...actual.userInfo(), homedir: h.home })
+  }
+})
 
 import {
   getEffectiveOpenClaw,
