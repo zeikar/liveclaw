@@ -138,13 +138,18 @@ type TokenCandidate = {
 const envOpenClawToken = (): string =>
   !app.isPackaged ? process.env.OPENCLAW_TOKEN?.trim() || '' : ''
 
-const envOpenClawBaseURL = (): string =>
+// The origin an env *token* belongs to: with no OPENCLAW_BASE_URL set, that token was meant for the
+// loopback gateway, so this falls back to the default. Only ever reached when envOpenClawToken()
+// returned something, which a packaged build never does.
+const envTokenBaseURL = (): string =>
   process.env.OPENCLAW_BASE_URL?.trim() || DEFAULT_OPENCLAW_BASE_URL
 
-// The dev gateway override, validated like every other base URL. An unparseable one must not reach
-// `new URL` in resolveOpenClaw: that throws out of settings:get and surfaces as a bare "Invalid URL"
-// on the load-error screen. candidates() already skips the env token for the same reason.
-const devOpenClawBaseURL = (): string => {
+// The dev gateway override itself — a different question from the one above, hence no default:
+// "which gateway did the developer point this at, if any". Validated like every other base URL,
+// because an unparseable one must not reach `new URL` in resolveOpenClaw: that throws out of
+// settings:get and surfaces as a bare "Invalid URL" on the load-error screen. candidates() already
+// skips the env token for the same reason.
+const envBaseURLOverride = (): string => {
   if (app.isPackaged) return ''
 
   const raw = process.env.OPENCLAW_BASE_URL?.trim() || ''
@@ -178,7 +183,7 @@ const candidates = (override: StoredOpenClaw, detection: OpenClawDetection): Tok
     try {
       list.push({
         token: envToken,
-        origin: parseBaseURL(envOpenClawBaseURL()).origin,
+        origin: parseBaseURL(envTokenBaseURL()).origin,
         source: 'env'
       })
     } catch {
@@ -217,7 +222,7 @@ const resolveOpenClaw = (override: StoredOpenClaw): ResolvedOpenClaw => {
   const detectionSucceeded = detection.token !== '' || detection.error === null
   const baseURL =
     override?.baseURL ||
-    devOpenClawBaseURL() ||
+    envBaseURLOverride() ||
     (detectionSucceeded ? detection.baseURL : '') ||
     DEFAULT_OPENCLAW_BASE_URL
   const origin = new URL(baseURL).origin
