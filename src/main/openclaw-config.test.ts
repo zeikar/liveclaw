@@ -1,17 +1,28 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'fs'
-import { tmpdir } from 'os'
+import { homedir, tmpdir } from 'os'
 import { join } from 'path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
+// The env-path gate falls back to ~/.openclaw/openclaw.json, so a fake home keeps these cases off
+// the developer's real config — a failed assertion would otherwise print their gateway token.
+const h = vi.hoisted(() => ({ home: '' }))
+vi.mock('os', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('os')>()),
+  homedir: () => h.home
+}))
+
 import { detectOpenClaw, openClawConfigPath } from './openclaw-config'
 
 let dir: string
 
 beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), 'liveclaw-'))
+  h.home = mkdtempSync(join(tmpdir(), 'liveclaw-home-'))
 })
 
 afterEach(() => {
   rmSync(dir, { recursive: true, force: true })
+  rmSync(h.home, { recursive: true, force: true })
   vi.unstubAllEnvs()
 })
 
@@ -188,5 +199,15 @@ describe('detectOpenClaw', () => {
     const path = useConfig(JSON.stringify({ gateway: { auth: { token: 'sekrit' } } }))
 
     expect(openClawConfigPath()).toBe(path)
+  })
+
+  // The packaging gate: settings.ts passes `!app.isPackaged`, so a shipped build resolves the real
+  // home-directory path no matter what the environment says.
+  it('ignores OPENCLAW_CONFIG_PATH when the env path is not allowed', () => {
+    const path = useConfig(JSON.stringify({ gateway: { auth: { token: 'sekrit' } } }))
+
+    expect(openClawConfigPath(false)).not.toBe(path)
+    expect(openClawConfigPath(false)).toBe(join(homedir(), '.openclaw', 'openclaw.json'))
+    expect(detectOpenClaw(false).token).not.toBe('sekrit')
   })
 })

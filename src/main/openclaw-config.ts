@@ -24,17 +24,24 @@ export interface OpenClawDetection {
   error: string | null
 }
 
-export function openClawConfigPath(): string {
-  return process.env.OPENCLAW_CONFIG_PATH?.trim() || join(homedir(), '.openclaw', 'openclaw.json')
+/**
+ * `allowEnvPath` is the packaging gate. OPENCLAW_CONFIG_PATH points detection at an arbitrary file,
+ * and that file supplies both a token and the origin the token is sent to — so it is exactly as
+ * powerful as OPENCLAW_TOKEN, which a packaged build already refuses (see settings.ts). The caller
+ * passes `!app.isPackaged`; the default keeps the dev convenience for direct callers and tests.
+ */
+export function openClawConfigPath(allowEnvPath = true): string {
+  const envPath = allowEnvPath ? process.env.OPENCLAW_CONFIG_PATH?.trim() : ''
+  return envPath || join(homedir(), '.openclaw', 'openclaw.json')
 }
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-function detectionResult(baseURL: string, error: string | null): OpenClawDetection {
+function detectionResult(path: string, baseURL: string, error: string | null): OpenClawDetection {
   return {
-    path: openClawConfigPath(),
+    path,
     token: '',
     baseURL,
     origin: null,
@@ -44,8 +51,8 @@ function detectionResult(baseURL: string, error: string | null): OpenClawDetecti
   }
 }
 
-export function detectOpenClaw(): OpenClawDetection {
-  const path = openClawConfigPath()
+export function detectOpenClaw(allowEnvPath = true): OpenClawDetection {
+  const path = openClawConfigPath(allowEnvPath)
   const defaultBaseURL = `http://127.0.0.1:${DEFAULT_GATEWAY_PORT}/v1`
 
   let raw: unknown
@@ -54,14 +61,14 @@ export function detectOpenClaw(): OpenClawDetection {
     raw = JSON5.parse(contents)
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
-      return detectionResult(defaultBaseURL, `No OpenClaw config at ${path}.`)
+      return detectionResult(path, defaultBaseURL, `No OpenClaw config at ${path}.`)
     }
     const message = err instanceof Error ? err.message : String(err)
-    return detectionResult(defaultBaseURL, message)
+    return detectionResult(path, defaultBaseURL, message)
   }
 
   if (!isPlainObject(raw)) {
-    return detectionResult(defaultBaseURL, `OpenClaw config at ${path} is not a JSON object.`)
+    return detectionResult(path, defaultBaseURL, `OpenClaw config at ${path} is not a JSON object.`)
   }
 
   const gateway = isPlainObject(raw.gateway) ? raw.gateway : {}

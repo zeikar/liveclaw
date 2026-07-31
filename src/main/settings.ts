@@ -141,6 +141,24 @@ const envOpenClawToken = (): string =>
 const envOpenClawBaseURL = (): string =>
   process.env.OPENCLAW_BASE_URL?.trim() || DEFAULT_OPENCLAW_BASE_URL
 
+// The dev gateway override, validated like every other base URL. An unparseable one must not reach
+// `new URL` in resolveOpenClaw: that throws out of settings:get and surfaces as a bare "Invalid URL"
+// on the load-error screen. candidates() already skips the env token for the same reason.
+const devOpenClawBaseURL = (): string => {
+  if (app.isPackaged) return ''
+
+  const raw = process.env.OPENCLAW_BASE_URL?.trim() || ''
+  if (raw === '') return ''
+
+  try {
+    parseBaseURL(raw)
+    return raw
+  } catch {
+    console.warn('[settings] OPENCLAW_BASE_URL is not an http(s) URL; ignoring it.')
+    return ''
+  }
+}
+
 // Every implicit token, paired with the origin it belongs to. The order encodes decision 8's
 // precedence: manual override → OpenClaw auto-detect → dev env.
 const candidates = (override: StoredOpenClaw, detection: OpenClawDetection): TokenCandidate[] => {
@@ -185,7 +203,10 @@ type ResolvedOpenClaw = {
 // the stored one for reads, the *proposed* one for a save — so a freshly submitted token can be seen
 // here before anything is written.
 const resolveOpenClaw = (override: StoredOpenClaw): ResolvedOpenClaw => {
-  const detection = detectOpenClaw()
+  // A packaged build reads OpenClaw's own config from its real home-directory path only: the
+  // OPENCLAW_CONFIG_PATH override names a file that supplies a token and its origin, which is the
+  // same power as the OPENCLAW_TOKEN this build already refuses.
+  const detection = detectOpenClaw(!app.isPackaged)
 
   // Effective base URL precedence per decision 3/8: config.json override → an explicitly-set dev
   // OPENCLAW_BASE_URL → OpenClaw auto-detect → default. Auto-detection is a guess (it cannot see a
@@ -194,10 +215,9 @@ const resolveOpenClaw = (override: StoredOpenClaw): ResolvedOpenClaw => {
   // actually found a usable gateway (a real token, or no error at all — e.g. a no-auth gateway); a
   // failed detection's baseURL is just a guessed default.
   const detectionSucceeded = detection.token !== '' || detection.error === null
-  const envBase = !app.isPackaged ? process.env.OPENCLAW_BASE_URL?.trim() || '' : ''
   const baseURL =
     override?.baseURL ||
-    envBase ||
+    devOpenClawBaseURL() ||
     (detectionSucceeded ? detection.baseURL : '') ||
     DEFAULT_OPENCLAW_BASE_URL
   const origin = new URL(baseURL).origin

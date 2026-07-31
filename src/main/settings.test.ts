@@ -3,7 +3,7 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-const h = vi.hoisted(() => ({ userData: '', isPackaged: false }))
+const h = vi.hoisted(() => ({ userData: '', isPackaged: false, home: '' }))
 vi.mock('electron', () => ({
   app: {
     getPath: () => h.userData,
@@ -11,6 +11,14 @@ vi.mock('electron', () => ({
       return h.isPackaged
     }
   }
+}))
+
+// A packaged build ignores OPENCLAW_CONFIG_PATH and falls back to ~/.openclaw/openclaw.json, so
+// without this the packaged cases below would read the developer's real config — and their real
+// gateway token — making the suite machine-dependent.
+vi.mock('os', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('os')>()),
+  homedir: () => h.home
 }))
 
 import {
@@ -38,6 +46,7 @@ const ENV_VARS = [
 beforeEach(() => {
   h.userData = mkdtempSync(join(tmpdir(), 'liveclaw-settings-'))
   h.isPackaged = false
+  h.home = mkdtempSync(join(tmpdir(), 'liveclaw-home-'))
   detectionDir = mkdtempSync(join(tmpdir(), 'liveclaw-openclaw-'))
   // Neutralise every relevant env var so the developer's real OpenClaw/.env install cannot change
   // results, then point detection at a nonexistent path (no detectable config by default).
@@ -49,6 +58,7 @@ beforeEach(() => {
 
 afterEach(() => {
   rmSync(h.userData, { recursive: true, force: true })
+  rmSync(h.home, { recursive: true, force: true })
   rmSync(detectionDir, { recursive: true, force: true })
   vi.unstubAllEnvs()
   vi.unstubAllGlobals()
@@ -420,6 +430,46 @@ describe('a packaged build never trusts dev env vars', () => {
 
     expect(getSettingsView().openaiApiKeySource).toBe('none')
     expect(getTTSConfig().openaiApiKey).toBe('')
+  })
+
+  // OPENCLAW_CONFIG_PATH names a file that supplies both a token and the origin it is sent to, so
+  // trusting it in a packaged build would be a way around the OPENCLAW_TOKEN refusal above.
+  it('ignores OPENCLAW_CONFIG_PATH and reads the real home-directory path instead', () => {
+    useDetection(detectedToken('detected-tok'))
+
+    const view = getSettingsView()
+
+    expect(view.openClawSource).toBe('none')
+    expect(getEffectiveOpenClaw().token).toBe('')
+    expect(view.openClawConfigPath).toBe(join(h.home, '.openclaw', 'openclaw.json'))
+  })
+
+  it('still detects the config at the real home-directory path', () => {
+    mkdirSync(join(h.home, '.openclaw'), { recursive: true })
+    writeFileSync(
+      join(h.home, '.openclaw', 'openclaw.json'),
+      JSON.stringify(detectedToken('home-tok'))
+    )
+
+    expect(getSettingsView().openClawSource).toBe('openclaw-config')
+    expect(getEffectiveOpenClaw().token).toBe('home-tok')
+  })
+})
+
+describe('an unparseable dev OPENCLAW_BASE_URL', () => {
+  // It used to reach `new URL` in resolveOpenClaw unchecked, so settings:get threw and the renderer
+  // showed a bare "Invalid URL" load-error screen instead of the app.
+  it('is ignored instead of throwing out of the resolver', () => {
+    vi.stubEnv('OPENCLAW_BASE_URL', 'not-a-url')
+
+    expect(() => getSettingsView()).not.toThrow()
+    expect(getEffectiveOpenClaw().baseURL).toBe(LOCAL_BASE)
+  })
+
+  it('is ignored for a non-http(s) scheme too', () => {
+    vi.stubEnv('OPENCLAW_BASE_URL', 'file:///etc/passwd')
+
+    expect(getEffectiveOpenClaw().baseURL).toBe(LOCAL_BASE)
   })
 })
 
