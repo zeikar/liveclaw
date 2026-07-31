@@ -36,7 +36,10 @@ export function MessageList({ messages, isLoading, error }: MessageListProps): R
 
       {error && (
         <div className="pointer-events-none mt-3">
-          <div className="mx-auto max-w-xl rounded-xl border border-red-300/40 bg-red-900/70 px-4 py-3 text-center text-sm text-red-100">
+          <div
+            role="alert"
+            className="mx-auto max-w-xl rounded-xl border border-red-300/40 bg-red-900/70 px-4 py-3 text-center text-sm text-red-100"
+          >
             {error}
           </div>
         </div>

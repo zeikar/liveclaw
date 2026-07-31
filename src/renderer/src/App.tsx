@@ -162,12 +162,10 @@ function App(): React.JSX.Element {
             />
           </div>
 
-          <MessageList
-            key={`messages:${messages.length}:loading:${isReplyLoading ? 1 : 0}`}
-            messages={messages}
-            isLoading={isReplyLoading}
-            error={visibleError}
-          />
+          {/* Deliberately unkeyed: a key derived from the message count would remount the whole
+              list every turn, resetting useChatScroll's own new-message tracking to a first-mount
+              jump and re-parsing every bubble's markdown from scratch. */}
+          <MessageList messages={messages} isLoading={isReplyLoading} error={visibleError} />
 
           <ChatComposer
             characterName={APP_CHARACTER.name}
