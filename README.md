@@ -230,6 +230,10 @@ setup only for trusted local/dev environments. Voice input (STT) keeps the stand
 ephemeral secret minted from it, in the main process — the renderer only ever receives the SDP answer
 needed to complete its own WebRTC session with OpenAI.
 
+Every IPC channel authenticates its caller as this app's own renderer, and the main process refuses
+any navigation away from the renderer entry — the preload bridge would otherwise belong to whatever
+document the window ended up holding.
+
 The OpenClaw gateway token is an **operator-grade credential**, not a scoped API key — keep it local.
 An auto-detected token is never duplicated onto disk; a token you type into the setup screen is
 stored in `config.json` as described above.

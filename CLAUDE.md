@@ -47,7 +47,10 @@ Chat and speech reach their providers by different routes, and that asymmetry is
   sent anywhere else; only a token submitted in the current request can establish credentials for a
   new origin.** The `GET /v1/models` check `settings:test` runs is a readiness/correctness check, not
   a trust boundary — `llm:chat` and provider construction do not depend on it. That token is an
-  **operator-grade credential** for the gateway, not a scoped API key.
+  **operator-grade credential** for the gateway, not a scoped API key. Every environment variable
+  that can supply or redirect a credential is dev-only: `OPENCLAW_TOKEN`, `OPENAI_API_KEY`,
+  `OPENCLAW_BASE_URL`, and `OPENCLAW_CONFIG_PATH` (which names the file a token is read from, so it
+  is gated exactly like the token itself — `detectOpenClaw(!app.isPackaged)`).
 - **TTS is called directly from the renderer** (`@charivo/tts/openai`, `dangerouslyAllowBrowser`).
   The OpenAI key reaches the renderer through the `tts:getConfig` IPC at runtime rather than
   `import.meta.env`, so no key is baked into the bundle — but it's still live in renderer memory, and
@@ -61,10 +64,28 @@ Chat and speech reach their providers by different routes, and that asymmetry is
   the ephemeral secret minted from it ever reaches the renderer on this path — only the negotiated SDP
   answer comes back. (TTS above is unaffected.) The mic permission handlers in `src/main/index.ts`
   (`setPermissionRequestHandler`/`setPermissionCheckHandler`) still grant only audio-only, main-frame
-  requests from this app's own renderer window. They and `stt:bootstrapRealtime`'s sender check now
-  share that boundary, `isOwnRendererURL` (`src/main/renderer-trust.ts`), instead of each defining it
-  separately — loosen one and you loosen the other. Provider/transcriber changes still belong upstream
-  in `charivo`, not patched around here.
+  requests from this app's own renderer window. They share their boundary — `isOwnRendererURL`
+  (`src/main/renderer-trust.ts`) — with the navigation guard and every IPC channel, instead of each
+  defining one separately: loosen it and you loosen all of them. Provider/transcriber changes still
+  belong upstream in `charivo`, not patched around here.
+
+### One trust boundary, three enforcement points
+
+`src/main/renderer-trust.ts` owns the answer to "is this this app's own renderer", and nothing else
+may answer it:
+
+- **Navigation.** `will-frame-navigate` in `createWindow` refuses any navigation off the renderer
+  entry. The preload `api` belongs to whatever document the window holds, so a top frame that
+  navigated away would otherwise keep every channel.
+- **Every IPC channel.** All handlers are registered with `handleTrusted`, never `ipcMain.handle`
+  directly — `llm:chat` reaches an operator-grade gateway and `settings:save` decides which gateway
+  that is, so they carry the same check as the key behind `tts:getConfig`. A new channel that skips
+  the wrapper is a hole, not a style choice.
+- **Mic permission.** The two permission handlers, as above.
+
+`toExternalURL` (`src/main/external-url.ts`) is the matching rule for URLs leaving the app: both
+`app:openExternal` and `setWindowOpenHandler` go through it, because a middle-clicked link reaches
+the latter without the renderer's own `preventDefault` ever running.
 
 ### The renderer's Charivo session
 
@@ -101,10 +122,9 @@ repo's `packages/server/src/openclaw/`, not patched around here.
 
 ### Realtime STT (the part that bites)
 
-- `stt:bootstrapRealtime` authenticates its sender with `isTrustedRendererSender`
-  (`src/main/renderer-trust.ts`) **before** it reads the OpenAI key or sends anything upstream —
-  minting an ephemeral client secret is a billable call, so an unauthenticated or navigated-away
-  sender must never reach it.
+- `stt:bootstrapRealtime` authenticates its sender (via `handleTrusted`) **before** it reads the
+  OpenAI key or sends anything upstream — minting an ephemeral client secret is a billable call, so
+  an unauthenticated or navigated-away sender must never reach it.
 - `useSTT` (`src/renderer/src/hooks/useSTT.ts`) branches Start/Stop on its own `sessionOpen` ref, not
   the STT manager's `isRecording()`. A streaming session that fails mid-recording reports
   `isRecording() === false` while still holding its terminal error, and only `stop()` rethrows it —
