@@ -4,3 +4,7 @@ pnpm-lock.yaml
 LICENSE.md
 tsconfig.json
 tsconfig.*.json
+
+# Vendored Live2D model assets — Cubism exports it, we never hand-edit it, and reformatting the
+# motion/model JSON only produces churn against upstream.
+src/renderer/public/live2d
