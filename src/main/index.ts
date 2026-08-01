@@ -55,7 +55,11 @@ function createWindow(): void {
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
-      sandbox: false
+      // The renderer displays markdown an LLM wrote, so it runs inside Chromium's OS sandbox rather
+      // than beside it. Affordable here because the preload imports nothing but electron's
+      // contextBridge and ipcRenderer, both of which a sandboxed preload keeps; a preload that
+      // reached for `fs` or `child_process` would break under this.
+      sandbox: true
     }
   })
 
