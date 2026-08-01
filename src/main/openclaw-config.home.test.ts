@@ -30,4 +30,33 @@ describe('the packaged config path', () => {
 
     expect(openClawConfigPath(true)).toBe('/tmp/liveclaw-dev-gateway.json')
   })
+
+  // The account lookup can fail — an arbitrary-uid container has no passwd entry. Falling back to
+  // homedir() there would hand the redirection straight back to $HOME in the one case the catch
+  // exists for, so this fails closed and detection reports it instead.
+  it('fails closed when the account has no home, rather than consulting $HOME', async () => {
+    vi.stubEnv('HOME', FAKE_HOME)
+    vi.stubEnv('USERPROFILE', FAKE_HOME)
+    vi.resetModules()
+    vi.doMock('os', async (importOriginal) => ({
+      ...(await importOriginal<typeof import('os')>()),
+      userInfo: () => {
+        throw new Error('getpwuid_r: no such user')
+      }
+    }))
+
+    try {
+      const module = await import('./openclaw-config')
+
+      expect(module.openClawConfigPath(false)).toBeNull()
+
+      const detection = module.detectOpenClaw(false)
+      expect(detection.token).toBe('')
+      expect(detection.origin).toBeNull()
+      expect(detection.error).toMatch(/home directory/i)
+    } finally {
+      vi.doUnmock('os')
+      vi.resetModules()
+    }
+  })
 })

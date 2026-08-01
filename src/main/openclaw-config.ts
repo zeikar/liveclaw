@@ -5,13 +5,14 @@
 // last started. Never throw here — a bad or missing OpenClaw config just means "fall back to
 // manual configuration".
 import { readFileSync } from 'fs'
-import { homedir, userInfo } from 'os'
+import { userInfo } from 'os'
 import { join } from 'path'
 import JSON5 from 'json5'
 
 const DEFAULT_GATEWAY_PORT = 18789
 
 export interface OpenClawDetection {
+  /** Where the config was looked for. Empty when the home directory could not be resolved at all. */
   path: string
   /** Empty string means no literal token was detected. */
   token: string
@@ -24,15 +25,17 @@ export interface OpenClawDetection {
   error: string | null
 }
 
-// `os.homedir()` consults $HOME (POSIX) / %USERPROFILE% (Windows) before asking the OS, so it would
-// leave the environment a second way to choose which config is trusted — walking straight around the
-// gate below. userInfo() reads the account database instead. It can throw when the uid has no passwd
-// entry, and this module must never throw, so homedir() remains the fallback for that case only.
-const homeDirectory = (): string => {
+// Resolved from the OS account alone. `os.homedir()` consults $HOME (POSIX) / %USERPROFILE%
+// (Windows) before asking the OS, which is precisely the redirection the packaging gate below
+// exists to stop — so there is deliberately NO fallback to it. Falling back would reopen the hole in
+// exactly the case this catch anticipates. userInfo() throws when the uid has no passwd entry
+// (an arbitrary-uid container, say); an unresolvable home therefore means "no detection", never "a
+// detection the environment steered".
+const homeDirectory = (): string | null => {
   try {
-    return userInfo().homedir || homedir()
+    return userInfo().homedir || null
   } catch {
-    return homedir()
+    return null
   }
 }
 
@@ -41,10 +44,16 @@ const homeDirectory = (): string => {
  * and that file supplies both a token and the origin the token is sent to — so it is exactly as
  * powerful as OPENCLAW_TOKEN, which a packaged build already refuses (see settings.ts). The caller
  * passes `!app.isPackaged`; the default keeps the dev convenience for direct callers and tests.
+ *
+ * Null means the config cannot be located at all, which the caller turns into a detection error —
+ * the user configures the gateway by hand, the same as any other failed detection.
  */
-export function openClawConfigPath(allowEnvPath = true): string {
+export function openClawConfigPath(allowEnvPath = true): string | null {
   const envPath = allowEnvPath ? process.env.OPENCLAW_CONFIG_PATH?.trim() : ''
-  return envPath || join(homeDirectory(), '.openclaw', 'openclaw.json')
+  if (envPath) return envPath
+
+  const home = homeDirectory()
+  return home ? join(home, '.openclaw', 'openclaw.json') : null
 }
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
@@ -66,6 +75,14 @@ function detectionResult(path: string, baseURL: string, error: string | null): O
 export function detectOpenClaw(allowEnvPath = true): OpenClawDetection {
   const path = openClawConfigPath(allowEnvPath)
   const defaultBaseURL = `http://127.0.0.1:${DEFAULT_GATEWAY_PORT}/v1`
+
+  if (path === null) {
+    return detectionResult(
+      '',
+      defaultBaseURL,
+      'Could not resolve your home directory, so the OpenClaw config could not be located; enter the gateway URL and token manually.'
+    )
+  }
 
   let raw: unknown
   try {
