@@ -58,3 +58,5 @@ jobs:
       - uses: softprops/action-gh-release@v2
         with:
           files: dist/*
+          # Without this the release page ships installers and no explanation of what changed.
+          generate_release_notes: true
