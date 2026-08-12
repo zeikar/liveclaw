@@ -1,32 +1,70 @@
-# LiveClaw
+<h1 align="center">LiveClaw</h1>
 
-[![CI](https://github.com/zeikar/liveclaw/actions/workflows/ci.yml/badge.svg)](https://github.com/zeikar/liveclaw/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/zeikar/liveclaw)](https://github.com/zeikar/liveclaw/releases/latest)
+<p align="center"><b>Your OpenClaw agent, with a face and a voice.</b></p>
 
-OpenClaw-powered desktop AI companion with Live2D avatars, voice input, and speech synthesis.
+<p align="center">
+  LiveClaw puts a Live2D character on your desktop and wires it to the OpenClaw gateway you<br>
+  already run. Talk to it out loud and it talks back — your agent, on your machine, no key pasting.
+</p>
 
-> **Work in progress** - actively under development. Contributions and feedback are welcome.
+<p align="center">
+  <a href="https://github.com/zeikar/liveclaw/actions/workflows/ci.yml"><img src="https://github.com/zeikar/liveclaw/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/zeikar/liveclaw/releases/latest"><img src="https://img.shields.io/github/v/release/zeikar/liveclaw" alt="Release"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT"></a>
+</p>
 
-Built with **Electron + React + TypeScript** and the [Charivo](https://github.com/zeikar/charivo) framework.
+<!-- Swap this screenshot for docs/images/demo.gif once the demo recording exists. -->
 
-## Download
+<p align="center">
+  <img src="docs/images/liveclaw-ui.png" alt="LiveClaw UI" width="820">
+</p>
 
-Prebuilt installers for each release are on the [latest release page](https://github.com/zeikar/liveclaw/releases/latest):
+## Quick start
 
-- **macOS** (Apple Silicon) - `.dmg`
-- **Windows** - `-setup.exe`
-- **Linux** - `.AppImage`, `.deb`
+**1. Enable OpenClaw's chat endpoint.** It is off by default, and every chat fails without it:
 
-> macOS builds are ad-hoc signed (not notarized), so Gatekeeper blocks them on first launch.
-> Open the app once via **right-click → Open**, or clear the quarantine flag:
+```bash
+openclaw config set gateway.http.endpoints.chatCompletions.enabled true
+openclaw gateway restart
+```
+
+**2. Install LiveClaw** from the [latest release](https://github.com/zeikar/liveclaw/releases/latest):
+
+| Platform              | File                |
+| --------------------- | ------------------- |
+| macOS (Apple Silicon) | `.dmg`              |
+| Windows               | `-setup.exe`        |
+| Linux                 | `.AppImage`, `.deb` |
+
+**3. Launch it.** LiveClaw reads the gateway port and token straight out of your own
+`~/.openclaw/openclaw.json` and starts chatting. There is nothing to paste.
+
+Voice is optional: add an OpenAI API key in settings to turn on speech and the mic button. Chat works
+without one. If auto-detection can't apply to your setup, the app asks for a token on the setup
+screen — see [Configuration](#configuration) for the details.
+
+> **macOS:** builds are ad-hoc signed (not notarized), so Gatekeeper blocks the first launch.
+> Open it once via **right-click → Open**, or clear the quarantine flag:
 >
 > ```bash
 > xattr -dr com.apple.quarantine /Applications/liveclaw.app
 > ```
 
-## Screenshot
+## What you get
 
-![LiveClaw UI](docs/images/liveclaw-ui.png)
+- **A character that answers you out loud.** Replies are spoken through OpenAI TTS with realtime lip
+  sync, and the model tracks your cursor as you move it.
+- **Voice in, voice out.** Press the mic and your speech streams into the composer live as you talk.
+  Sending stays manual — nothing leaves the app on its own.
+- **Your agent, not a hosted one.** Chat runs through your local OpenClaw gateway, so it keeps the
+  tools and the long-term memory your agent already has.
+- **Nothing to configure.** The gateway token is auto-detected and never copied into LiveClaw's own
+  config, so rotating it in OpenClaw just works.
+- **Your own character.** Point it at a different Live2D model and rewrite the persona in
+  `src/renderer/src/config/` (requires a rebuild).
+
+Built with **Electron + React + TypeScript** and the
+[Charivo](https://github.com/zeikar/charivo) framework. Contributions and feedback are welcome.
 
 ## Tech Stack
 
@@ -40,6 +78,9 @@ Prebuilt installers for each release are on the [latest release page](https://gi
 - **OpenAI STT** (`@charivo/stt/openai-realtime`) - Realtime voice input: WebRTC audio streaming from the renderer, bootstrapped (ephemeral secret + SDP exchange) via the main process
 
 ## Architecture
+
+<details>
+<summary><b>Three paths: chat over IPC, TTS from the renderer, voice input split across both</b></summary>
 
 ```txt
 [Renderer - React]
@@ -92,6 +133,8 @@ also opens its WebRTC session — audio and live transcript — directly from th
 answer main hands back; but the bootstrap that produces that answer, minting an ephemeral secret and
 exchanging the SDP offer, runs in the main process behind an authenticated IPC call.
 
+</details>
+
 ## Live2D Integration
 
 Live2D is already integrated through Charivo renderer attachment.
@@ -106,7 +149,7 @@ Live2D is already integrated through Charivo renderer attachment.
 
 - [OpenClaw](https://openclaw.ai/) installed and running (default: `http://127.0.0.1:18789`)
 - OpenAI API key — optional; required only for TTS and voice input (STT)
-- Node.js and npm
+- Node.js and npm — only to build from source; the prebuilt installers need neither
 
 ## Configuration
 
@@ -124,8 +167,13 @@ Verify the gateway before running the app:
 
 ```bash
 curl http://127.0.0.1:18789/v1/models \
-  -H "Authorization: Bearer $(openclaw config get gateway.auth.token)"
+  -H "Authorization: Bearer $(jq -r '.gateway.auth.token' ~/.openclaw/openclaw.json)"
 ```
+
+> Read the token from the config file, not from `openclaw config get gateway.auth.token` — that
+> command redacts secrets (it prints `__OPENCLAW_REDACTED__`, with or without `--json`), so a check
+> built on it always answers `401` no matter how healthy the gateway is. LiveClaw reads the same file
+> this `curl` does.
 
 If OpenClaw is installed and its gateway is reachable, **there is nothing else to configure.**
 LiveClaw reads `gateway.auth.token` and `gateway.port` straight out of `~/.openclaw/openclaw.json`
