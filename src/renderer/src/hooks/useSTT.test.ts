@@ -8,7 +8,7 @@ type FakeSTTManager = {
   isRecording: ReturnType<typeof vi.fn>
 }
 
-type PartialListener = (data: { transcription: string }) => void
+type PartialListener = (data: { text: string }) => void
 
 type FakeCharivo = {
   getSTTManager: () => FakeSTTManager | undefined
@@ -195,7 +195,7 @@ describe('useSTT', () => {
     renderHook(() => useSTT({ onPartial }))
 
     act(() => {
-      partialListener!({ transcription: 'hello wor' })
+      partialListener!({ text: 'hello wor' })
     })
 
     expect(fakeCharivo.on).toHaveBeenCalledTimes(1)
@@ -211,7 +211,7 @@ describe('useSTT', () => {
 
     rerender({ onPartial: second })
     act(() => {
-      partialListener!({ transcription: 'later' })
+      partialListener!({ text: 'later' })
     })
 
     expect(second).toHaveBeenCalledWith('later')

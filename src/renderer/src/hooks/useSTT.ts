@@ -45,8 +45,8 @@ export function useSTT(options: UseSTTOptions = {}): UseSTTResult {
     const charivo = getCharivoInstance()
     // One stable listener reading through the ref: subscribes once instead of per render, and
     // still never calls a stale callback.
-    const listener = ({ transcription }: { transcription: string }): void => {
-      onPartialRef.current?.(transcription)
+    const listener = ({ text }: { text: string }): void => {
+      onPartialRef.current?.(text)
     }
     charivo.on('stt:partial', listener)
     return () => charivo.off('stt:partial', listener)
