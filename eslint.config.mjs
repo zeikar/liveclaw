@@ -28,5 +28,13 @@ export default defineConfig(
       ...eslintPluginReactRefresh.configs.vite.rules
     }
   },
+  {
+    // Plain-JS tooling outside the app. Return-type annotations are a TypeScript feature, so the
+    // rule cannot be satisfied here rather than merely being inconvenient; every other check stays.
+    files: ['scripts/**/*.{js,mjs}'],
+    rules: {
+      '@typescript-eslint/explicit-function-return-type': 'off'
+    }
+  },
   eslintConfigPrettier
 )

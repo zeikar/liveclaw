@@ -13,10 +13,10 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT"></a>
 </p>
 
-<!-- Swap this screenshot for docs/images/demo.gif once the demo recording exists. -->
+<!-- Recorded by `npm run demo:gif`. Re-record rather than hand-edit. -->
 
 <p align="center">
-  <img src="docs/images/liveclaw-ui.png" alt="LiveClaw UI" width="820">
+  <img src="docs/images/demo.gif" alt="Asking Hiyori a question by keyboard and hearing her answer" width="820">
 </p>
 
 ## Quick start
