@@ -1,0 +1,64 @@
+{
+	"_comment": [
+		"Hand-authored companion to Hiyori.model3.json, which stays exactly as Cubism exported it.",
+		"The Live2D renderer drives idle by calling startRandomMotion over the whole Idle group, so",
+		"the only way to hold the character still is to give that group one entry. Idle here is",
+		"Hiyori_m03 alone: of the nine stock idle motions it is the only calm one that never opens",
+		"the mouth (ParamMouthOpenY stays at 0 for its whole 4.2s), which keeps the mouth free to",
+		"mean lip sync and nothing else. TapBody points at the same motion so a tap cannot start a",
+		"large one either.",
+		"Everything else - the moc3, textures, physics, pose and the EyeBlink/LipSync groups - is",
+		"copied verbatim, so blinking, breathing, physics and lip sync all behave normally."
+	],
+	"Version": 3,
+	"FileReferences": {
+		"Moc": "Hiyori.moc3",
+		"Textures": [
+			"Hiyori.2048/texture_00.png",
+			"Hiyori.2048/texture_01.png"
+		],
+		"Physics": "Hiyori.physics3.json",
+		"Pose": "Hiyori.pose3.json",
+		"UserData": "Hiyori.userdata3.json",
+		"DisplayInfo": "Hiyori.cdi3.json",
+		"Motions": {
+			"Idle": [
+				{
+					"File": "motions/Hiyori_m03.motion3.json",
+					"FadeInTime": 0.5,
+					"FadeOutTime": 0.5
+				}
+			],
+			"TapBody": [
+				{
+					"File": "motions/Hiyori_m03.motion3.json",
+					"FadeInTime": 0.5,
+					"FadeOutTime": 0.5
+				}
+			]
+		}
+	},
+	"Groups": [
+		{
+			"Target": "Parameter",
+			"Name": "LipSync",
+			"Ids": [
+				"ParamMouthOpenY"
+			]
+		},
+		{
+			"Target": "Parameter",
+			"Name": "EyeBlink",
+			"Ids": [
+				"ParamEyeLOpen",
+				"ParamEyeROpen"
+			]
+		}
+	],
+	"HitAreas": [
+		{
+			"Id": "HitArea",
+			"Name": "Body"
+		}
+	]
+}
