@@ -120,6 +120,13 @@ const startGateway = (): Promise<void> =>
     })
   })
 
+// These cases are one conversation, not seven independent ones: each turn builds on the transcript
+// and the call log the previous turn left. Without serial mode a failure restarts the worker and
+// re-runs beforeAll, so every later case would compare fixed indexes (chatCalls[2], chatCalls[4])
+// against a freshly emptied log — a cascade of misleading failures hiding the one real one. Serial
+// mode skips the rest instead, and retries the sequence as a whole.
+test.describe.configure({ mode: 'serial' })
+
 const send = async (text: string): Promise<void> => {
   await page.getByRole('textbox').fill(text)
   await page.getByRole('button', { name: 'Send' }).click()

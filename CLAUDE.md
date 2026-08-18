@@ -8,6 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 npm run dev              # electron-vite dev (Electron + renderer HMR)
 npm run build            # typecheck + electron-vite build
 npm test                 # vitest run
+npm run test:e2e         # electron-vite build + playwright (real Electron app)
 npm run lint             # eslint (cached)
 npm run typecheck        # tsc for node (main/preload) and web (renderer) projects separately
 npm run format           # prettier --write .
@@ -18,10 +19,11 @@ Run a single test file or case:
 ```bash
 npx vitest run src/renderer/src/hooks/useCharivo.test.ts
 npx vitest run -t 'rotates the OpenClaw session'
+npx playwright test e2e/chat.spec.ts -g 'rotates the session key'
 ```
 
-CI (`.github/workflows/ci.yml`) runs lint → typecheck → test → `electron-vite build`. Match that
-before pushing.
+CI (`.github/workflows/ci.yml`) runs lint → typecheck → test → `electron-vite build` → the e2e
+suites under `xvfb-run`. Match that before pushing; locally the last step is `npm run test:e2e`.
 
 ## Architecture
 
