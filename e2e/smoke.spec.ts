@@ -8,6 +8,7 @@ import {
   type ElectronApplication,
   type Page
 } from '@playwright/test'
+import { isolatedLaunchEnv } from './isolation'
 
 const MAIN_ENTRY = join(__dirname, '..', 'out', 'main', 'index.js')
 
@@ -30,17 +31,11 @@ let userDataDir: string
 const consoleErrors: string[] = []
 
 test.beforeAll(async () => {
-  // LIVECLAW_USER_DATA_DIR only applies when `app.isPackaged` is false, which is how Playwright
-  // launches the app — so the suite never reads or writes the real config.json, and never has to
-  // care whether the developer running it has a token configured.
   userDataDir = mkdtempSync(join(tmpdir(), 'liveclaw-e2e-'))
 
-  // Main picks the dev server over the built renderer whenever ELECTRON_RENDERER_URL is set, so drop
-  // it: this suite always exercises the bundle that actually ships.
-  const env = { ...process.env, LIVECLAW_USER_DATA_DIR: userDataDir }
-  delete env.ELECTRON_RENDERER_URL
-
-  app = await electron.launch({ args: [MAIN_ENTRY], env })
+  // Seeded with nothing, so this suite runs the unconfigured app: no gateway, no OpenAI key. See
+  // isolation.ts for why the environment needs blocking rather than just leaving alone.
+  app = await electron.launch({ args: [MAIN_ENTRY], env: isolatedLaunchEnv(userDataDir) })
 
   page = await app.firstWindow()
   page.on('console', (message) => {
@@ -93,12 +88,34 @@ test('actually draws the character onto the stage', async () => {
   // which inflates the PNG; an empty canvas leaves that background alone (ratio ~1.0), and a canvas
   // cleared to a flat colour compresses *better* than the gradient it hides (ratio < 1). Both
   // failure modes therefore land under the bound. Measured on this model: 470KB vs 200KB, 2.35x.
+  //
+  // Both shots capture whatever the compositor paints over the canvas box, so anything floating
+  // above the stage — here the setup overlay, which fills the viewport — mutes the character in the
+  // painted shot and collapses the ratio toward 1. Hide the overlays for the measurement, so this
+  // asks "did the stage draw a character" rather than "which App branch happens to be rendering".
   const canvas = page.locator('canvas')
+
+  const restoreOverlays = await page.evaluate(() => {
+    const stage = document.querySelector('canvas')?.closest('section')
+    const siblings = Array.from(stage?.parentElement?.children ?? []).filter(
+      (node): node is HTMLElement => node instanceof HTMLElement && node !== stage
+    )
+    const previous = siblings.map((node) => node.style.visibility)
+    siblings.forEach((node) => (node.style.visibility = 'hidden'))
+    return previous
+  })
 
   const painted = await canvas.screenshot()
   await canvas.evaluate((element) => ((element as HTMLElement).style.opacity = '0'))
   const background = await canvas.screenshot()
   await canvas.evaluate((element) => ((element as HTMLElement).style.opacity = ''))
+
+  await page.evaluate((previous) => {
+    const stage = document.querySelector('canvas')?.closest('section')
+    Array.from(stage?.parentElement?.children ?? [])
+      .filter((node): node is HTMLElement => node instanceof HTMLElement && node !== stage)
+      .forEach((node, index) => (node.style.visibility = previous[index] ?? ''))
+  }, restoreOverlays)
 
   expect(painted.length).toBeGreaterThan(background.length * 1.5)
 })

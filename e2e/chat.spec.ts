@@ -10,6 +10,7 @@ import {
   type ElectronApplication,
   type Page
 } from '@playwright/test'
+import { isolatedLaunchEnv } from './isolation'
 
 // The one span no other suite covers: preload bridge → ipcMain 'llm:chat' → @charivo/server/openclaw
 // → gateway, and the reply back into the DOM. The unit suites stub window.api, so everything from
@@ -147,35 +148,13 @@ test.beforeAll(async () => {
     { mode: 0o600 }
   )
 
-  // main does `import 'dotenv/config'`, so the repo's own .env is loaded *inside* the Electron
-  // process — deleting a variable from the launch env would just let .env refill it. Point dotenv at
-  // an empty file instead, and the file cannot contribute anything.
-  const emptyEnvFile = join(userDataDir, 'empty.env')
-  writeFileSync(emptyEnvFile, '')
-
-  const env = {
-    ...process.env,
-    LIVECLAW_USER_DATA_DIR: userDataDir,
-    DOTENV_CONFIG_PATH: emptyEnvFile,
-    // Point detection at a file that does not exist, so the run cannot pick up (or be perturbed by)
-    // the developer's real ~/.openclaw/openclaw.json. The override above wins regardless; this only
-    // makes the suite behave the same whether or not OpenClaw is installed on the machine.
-    OPENCLAW_CONFIG_PATH: join(userDataDir, 'no-openclaw-here.json'),
-    // THE BILLING GUARD. getTTSConfig falls back to these when config.json carries no key, and a
-    // key present here would arm TTS and STT against the real OpenAI API — every reply in this suite
-    // would then be a paid speech-synthesis call. Empty, not deleted: dotenv does not overwrite a
-    // variable that already exists, so '' also blocks whatever .env would otherwise supply.
-    OPENAI_API_KEY: '',
-    VITE_OPENAI_API_KEY: '',
-    // Not billable, but they steer which gateway is used; the seeded config.json must be the only
-    // thing deciding that.
-    OPENCLAW_TOKEN: '',
-    OPENCLAW_BASE_URL: ''
-  }
-  // Same reason as the smoke suite: exercise the built renderer, never a dev server.
-  delete env.ELECTRON_RENDERER_URL
-
-  app = await electron.launch({ args: [join(__dirname, '..', 'out', 'main', 'index.js')], env })
+  // isolation.ts is what keeps the app off the developer's .env, real OpenClaw config, and — the
+  // one that costs money — a real OpenAI key. The config.json above is then the only thing telling
+  // this app where its gateway is.
+  app = await electron.launch({
+    args: [join(__dirname, '..', 'out', 'main', 'index.js')],
+    env: isolatedLaunchEnv(userDataDir)
+  })
   page = await app.firstWindow()
   await page.waitForLoadState('domcontentloaded')
 })
