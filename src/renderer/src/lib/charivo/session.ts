@@ -1,4 +1,4 @@
-import { Charivo, type LLMClient, type Message } from '@charivo/core'
+import { createCharivo, type Charivo, type LLMClient, type Message } from '@charivo/core'
 import { createLLMManager } from '@charivo/llm'
 import { createSTTManager } from '@charivo/stt'
 import { createOpenAIRealtimeSTTTranscriber } from '@charivo/stt/openai-realtime'
@@ -11,11 +11,10 @@ const llmClient: LLMClient = {
   call: (messages) => window.api.chat(messages)
 }
 
-const charivo = new Charivo()
-const llmManager = createLLMManager(llmClient)
-
-charivo.attachLLM(llmManager)
-charivo.setCharacter(APP_CHARACTER)
+const charivo = createCharivo({
+  llm: createLLMManager(llmClient),
+  character: APP_CHARACTER
+})
 
 // Applies the TTS config that now arrives over the tts:getConfig IPC at runtime instead of being
 // inlined into the bundle at build time. Synchronous on purpose: the settings gate guarantees no

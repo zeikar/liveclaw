@@ -1,6 +1,5 @@
 import { type RefObject, useEffect, useRef, useState } from 'react'
 import type { RenderManager } from '@charivo/core'
-import { APP_CHARACTER } from '../config/character'
 import { LIVE2D_MODEL_PATH } from '../config/live2d'
 import { getCharivoInstance } from '../lib/charivo/session'
 
@@ -62,7 +61,6 @@ export function useLive2DRenderer(): UseLive2DRendererResult {
 
       const charivo = getCharivoInstance()
       charivo.attachRenderer(manager)
-      charivo.setCharacter(APP_CHARACTER)
 
       setIsRendererReady(true)
     }
