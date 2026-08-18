@@ -25,3 +25,8 @@ jobs:
       - run: npm test
 
       - run: npx electron-vite build
+
+      # The e2e suites launch the real app against the build above, so they run here rather than
+      # through `npm run test:e2e`, which would build it a second time. The runner has no display —
+      # xvfb-run supplies one, and Electron falls back to software GL inside it.
+      - run: xvfb-run --auto-servernum npx playwright test
